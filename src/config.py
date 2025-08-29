@@ -7,13 +7,8 @@ import os
 from dotenv import load_dotenv
 from typing import List
 
-# Load environment variables from .env file (if present)
-# In Vercel, environment variables are injected directly
-try:
-    load_dotenv()
-except:
-    # .env file may not exist in cloud environments like Vercel
-    pass
+# Load environment variables from .env file
+load_dotenv()
 
 class Config:
     """Application configuration management."""

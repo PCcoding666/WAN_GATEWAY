@@ -15,7 +15,7 @@ A comprehensive web application built with Gradio that provides an intuitive int
 - **📱 Responsive UI**: Beautiful, user-friendly interface with real-time feedback
 - **🔄 Loading States**: Clear visual feedback during video generation
 - **📊 Status Tracking**: Detailed progress and error reporting
-- **🧪 Comprehensive Tests**: Full test coverage with 66+ unit tests
+- **🔧 Easy Configuration**: Simple environment setup and deployment
 
 ## 🚀 Quick Start
 
@@ -115,12 +115,7 @@ gradio-bailian-t2v/
 │   ├── text_to_video_service.py   # Core API service
 │   ├── gradio_app.py              # Gradio UI implementation
 │   └── utils.py                   # Helper functions
-├── tests/
-│   ├── __init__.py                # Test package initialization
-│   ├── conftest.py                # Test fixtures and configuration
-│   ├── test_config.py             # Configuration tests
-│   ├── test_service.py            # Service layer tests
-│   └── test_utils.py              # Utility function tests
+
 ├── .env                           # Environment variables (create this)
 ├── requirements.txt               # Python dependencies
 ├── main.py                        # Application entry point
@@ -173,28 +168,7 @@ MAX_POLL_TIME = 300            # Maximum polling time (5 minutes)
 | **1:1** | Square format | Instagram posts, social media |
 | **9:16** | Portrait/vertical | TikTok, Instagram stories, mobile |
 
-## 🧪 Testing
 
-The project includes comprehensive test coverage:
-
-```bash
-# Run all tests
-python -m pytest tests/ -v
-
-# Run specific test file
-python -m pytest tests/test_service.py -v
-
-# Run tests with coverage
-python -m pytest tests/ --cov=src --cov-report=html
-```
-
-### Test Coverage
-
-- **66+ unit tests** covering all major components
-- **Configuration tests**: Validate settings and environment
-- **Service tests**: API integration, error handling, validation
-- **Utility tests**: Helper functions, caching, error messages
-- **Mock testing**: Simulated API responses for reliable testing
 
 ## 🐛 Troubleshooting
 
@@ -317,8 +291,7 @@ The application integrates with Alibaba Bailian's text-to-video API:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite (`python -m pytest tests/`)
+4. Ensure code quality and documentation
 6. Commit your changes (`git commit -m 'Add amazing feature'`)
 7. Push to the branch (`git push origin feature/amazing-feature`)
 8. Open a Pull Request
@@ -329,11 +302,10 @@ The application integrates with Alibaba Bailian's text-to-video API:
 # Install development dependencies
 pip install -r requirements.txt
 
-# Run tests
-python -m pytest tests/ -v
+
 
 # Check code formatting
-python -m ruff check src/ tests/
+python -m ruff check src/
 
 # Run the application in debug mode
 python main.py --debug
@@ -356,12 +328,12 @@ If you encounter any issues or have questions:
 1. Check the [Troubleshooting](#-troubleshooting) section
 2. Run environment check: `python main.py --check-env`
 3. Enable debug mode: `python main.py --debug`
-4. Review the test output: `python -m pytest tests/ -v`
+4. Check application logs for detailed error information
 
 ## 🚦 Status
 
 - ✅ Core functionality implemented
-- ✅ Full test coverage (66+ tests)
+- ✅ Robust error handling and logging
 - ✅ Comprehensive documentation
 - ✅ Error handling and validation
 - ✅ Production-ready code

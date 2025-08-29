@@ -49,17 +49,6 @@ Thumbs.db
 *.log
 logs/
 
-# Testing
-.coverage
-.pytest_cache/
-.tox/
-.nox/
-htmlcov/
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -90,7 +79,3 @@ gradio_cached_examples/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# Debug files (exclude general debug files but allow specific utilities)
-# debug_*.py
-# debug_*/

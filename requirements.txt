@@ -8,10 +8,5 @@ aiohttp>=3.8.0
 # Python 3.13 compatibility fix
 audioop-lts>=0.2.0
 
-# Development and testing dependencies
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-pytest-mock>=3.10.0
-
 # Additional utility dependencies
 typing-extensions>=4.0.0

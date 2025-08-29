@@ -58,7 +58,7 @@ def check_environment():
         # Validate configuration
         Config.validate_config()
         
-        # Test service initialization
+        # Initialize service
         service = TextToVideoService()
         status = service.get_service_status()
         

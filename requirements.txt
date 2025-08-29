@@ -1,5 +1,5 @@
 # Core dependencies for Gradio Bailian Text-to-Video Application
-# Using Python 3.13 compatible Gradio version
+# Compatible with Python 3.8+ (Vercel uses Python 3.12)
 gradio>=5.43.1
 requests>=2.28.0
 python-dotenv>=1.0.0
@@ -9,9 +9,6 @@ aiohttp>=3.8.0
 # Vercel deployment dependencies
 fastapi>=0.100.0
 uvicorn>=0.23.2
-
-# Python 3.13 compatibility fix
-audioop-lts>=0.2.0
 
 # Development and testing dependencies
 pytest>=7.0.0

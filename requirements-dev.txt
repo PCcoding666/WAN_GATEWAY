@@ -1,0 +1,8 @@
+# Requirements for local development with Python 3.13+
+# This file includes the audioop-lts dependency needed for Python 3.13
+
+# Include base requirements
+-r requirements.txt
+
+# Python 3.13 specific compatibility fix
+audioop-lts>=0.2.0

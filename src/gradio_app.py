@@ -5,6 +5,7 @@ This module provides a user-friendly web interface for generating videos
 from text descriptions using the Bailian wan-v1-t2v API.
 """
 import gradio as gr
+import os
 import logging
 from typing import Tuple, Optional
 from .config import Config
@@ -74,8 +75,18 @@ class GradioTextToVideoApp:
                 if result.task_id:
                     status_msg += f" (Task ID: {result.task_id})"
                 
-                # Use local video path if available, otherwise fall back to URL
-                video_path = result.local_video_path if result.local_video_path else result.video_url
+                # Prefer local video path for better stability, but handle fallback
+                video_path = None
+                if result.local_video_path and os.path.exists(result.local_video_path):
+                    video_path = result.local_video_path
+                    status_msg += " - Video downloaded locally"
+                elif result.video_url:
+                    video_path = result.video_url
+                    status_msg += " - Using direct URL (download failed)"
+                    logger.warning("Local download failed, using direct URL which may cause connection issues")
+                else:
+                    return None, "❌ Video generated but no valid path available"
+                
                 return video_path, status_msg
             else:
                 error_msg = f"❌ Generation failed: {result.error_message}"

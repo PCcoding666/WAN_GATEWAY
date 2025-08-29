@@ -395,7 +395,7 @@ class TextToVideoService:
     
     def _download_video_locally(self, video_url: str, task_id: str) -> Optional[str]:
         """
-        Download video from OSS URL to local temporary file to avoid Gradio OSS connection issues.
+        Download video from OSS URL to local temporary file with retry logic.
         
         Args:
             video_url: Remote video URL from OSS
@@ -404,50 +404,113 @@ class TextToVideoService:
         Returns:
             Optional[str]: Local file path if successful, None if failed
         """
-        try:
-            logger.info(f"Downloading video from: {video_url[:100]}...")
-            
-            # Create a unique filename
-            parsed_url = urlparse(video_url)
-            file_extension = os.path.splitext(parsed_url.path)[1] or '.mp4'
-            
-            # Create temporary directory if it doesn't exist
-            temp_dir = os.path.join(tempfile.gettempdir(), 'wan_gateway_videos')
-            os.makedirs(temp_dir, exist_ok=True)
-            
-            # Create local file path
-            local_filename = f"video_{task_id}_{int(time.time())}{file_extension}"
-            local_path = os.path.join(temp_dir, local_filename)
-            
-            # Download the video with proper headers
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-            }
-            
-            response = requests.get(
-                video_url,
-                headers=headers,
-                stream=True,
-                timeout=Config.REQUEST_TIMEOUT * 3  # Longer timeout for video download
-            )
-            
-            if response.status_code == 200:
-                # Write video to local file
-                with open(local_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
+        max_retries = 3
+        retry_delay = 2  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Downloading video (attempt {attempt + 1}/{max_retries}) from: {video_url[:100]}...")
                 
-                file_size = os.path.getsize(local_path)
-                logger.info(f"Video downloaded successfully to: {local_path} (Size: {file_size} bytes)")
-                return local_path
-            else:
-                logger.error(f"Failed to download video: HTTP {response.status_code}")
-                return None
+                # Create a unique filename
+                parsed_url = urlparse(video_url)
+                file_extension = os.path.splitext(parsed_url.path)[1] or '.mp4'
                 
-        except Exception as e:
-            logger.error(f"Error downloading video: {str(e)}")
-            return None
+                # Create temporary directory if it doesn't exist
+                temp_dir = os.path.join(tempfile.gettempdir(), 'wan_gateway_videos')
+                os.makedirs(temp_dir, exist_ok=True)
+                
+                # Create local file path
+                local_filename = f"video_{task_id}_{int(time.time())}{file_extension}"
+                local_path = os.path.join(temp_dir, local_filename)
+                
+                # Download the video with comprehensive headers and session
+                session = requests.Session()
+                session.headers.update({
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Connection': 'keep-alive',
+                    'Sec-Fetch-Dest': 'video',
+                    'Sec-Fetch-Mode': 'cors',
+                    'Sec-Fetch-Site': 'cross-site'
+                })
+                
+                # Configure adapters for better connection handling
+                from requests.adapters import HTTPAdapter
+                from urllib3.util.retry import Retry
+                
+                retry_strategy = Retry(
+                    total=3,
+                    status_forcelist=[429, 500, 502, 503, 504],
+                    method_whitelist=["HEAD", "GET", "OPTIONS"]
+                )
+                adapter = HTTPAdapter(max_retries=retry_strategy)
+                session.mount("http://", adapter)
+                session.mount("https://", adapter)
+                
+                # Download with streaming and longer timeout
+                response = session.get(
+                    video_url,
+                    stream=True,
+                    timeout=(30, 120),  # (connect_timeout, read_timeout)
+                    verify=True
+                )
+                
+                if response.status_code == 200:
+                    # Write video to local file with progress tracking
+                    total_size = int(response.headers.get('content-length', 0))
+                    downloaded_size = 0
+                    
+                    with open(local_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=16384):  # Larger chunks for video
+                            if chunk:
+                                f.write(chunk)
+                                downloaded_size += len(chunk)
+                                
+                                # Log progress for large files
+                                if total_size > 0 and downloaded_size % (1024 * 1024) == 0:  # Every MB
+                                    progress = (downloaded_size / total_size) * 100
+                                    logger.info(f"Download progress: {progress:.1f}%")
+                    
+                    file_size = os.path.getsize(local_path)
+                    if file_size > 0:
+                        logger.info(f"Video downloaded successfully to: {local_path} (Size: {file_size} bytes)")
+                        return local_path
+                    else:
+                        logger.error("Downloaded file is empty")
+                        os.unlink(local_path)  # Remove empty file
+                        
+                elif response.status_code == 403:
+                    logger.error(f"Access denied (403) - URL may have expired: {video_url}")
+                    break  # Don't retry on permission errors
+                elif response.status_code == 404:
+                    logger.error(f"Video not found (404): {video_url}")
+                    break  # Don't retry on not found errors
+                else:
+                    logger.error(f"Failed to download video: HTTP {response.status_code} - {response.text[:200]}")
+                    
+            except requests.exceptions.Timeout:
+                logger.warning(f"Download attempt {attempt + 1} timed out")
+                if attempt < max_retries - 1:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+            except requests.exceptions.ConnectionError as e:
+                logger.warning(f"Connection error on attempt {attempt + 1}: {str(e)}")
+                if attempt < max_retries - 1:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+            except Exception as e:
+                logger.error(f"Unexpected error on attempt {attempt + 1}: {str(e)}")
+                if attempt < max_retries - 1:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+        
+        logger.error(f"Failed to download video after {max_retries} attempts")
+        return None
     
     def get_service_status(self) -> dict:
         """

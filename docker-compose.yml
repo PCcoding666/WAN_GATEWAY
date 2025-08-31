@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  wan-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wan-gateway:latest
+    container_name: wan-gateway
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    environment:
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - PYTHONPATH=/app
+    volumes:
+      - ./downloads:/app/downloads
+      - ./cache:/app/cache

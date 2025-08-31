@@ -5,6 +5,10 @@
 .env.staging
 *.key
 
+# Docker
+.dockerignore
+docker-compose.override.yml
+
 # Python
 __pycache__/
 *.py[cod]

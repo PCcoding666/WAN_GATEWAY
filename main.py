@@ -17,9 +17,9 @@ src_path = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_path))
 
 try:
-    from src.gradio_app import create_app
+    from src.gradio_app import create_app, EnhancedGradioVideoApp
     from src.config import Config
-    from src.text_to_video_service import TextToVideoService
+    from src.video_service_factory import MultiModalVideoApp
 except ImportError as e:
     print(f"❌ Import error: {e}")
     print("Please ensure all dependencies are installed by running:")
@@ -58,15 +58,17 @@ def check_environment():
         # Validate configuration
         Config.validate_config()
         
-        # Initialize service
-        service = TextToVideoService()
-        status = service.get_service_status()
+        # Initialize multi-modal app
+        app = MultiModalVideoApp(api_key=Config.DASHSCOPE_API_KEY)
+        status = app.get_service_status()
         
         print("✅ Environment Check Passed")
         print(f"   API Configured: {status['api_configured']}")
-        print(f"   API Endpoint: {status['api_endpoint']}")
-        print(f"   Supported Styles: {len(status['supported_styles'])}")
-        print(f"   Supported Ratios: {len(status['supported_ratios'])}")
+        print(f"   Supported Modes: {', '.join(status['supported_modes'])}")
+        print(f"   Current Mode: {status['current_mode'] or 'None'}")
+        print("   Available Models:")
+        for mode, info in status['modes_info'].items():
+            print(f"     {mode}: {', '.join(info['available_models'])}")
         print()
         
         return True
@@ -131,7 +133,7 @@ Examples:
     setup_logging(args.debug)
     logger = logging.getLogger(__name__)
     
-    print("🎬 Gradio Bailian Text-to-Video Generator")
+    print("🎬 Enhanced Multi-Modal Video Generator")
     print("=" * 50)
     
     # Check environment

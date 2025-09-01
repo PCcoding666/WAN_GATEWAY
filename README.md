@@ -1,6 +1,6 @@
-# 🎬 Gradio Bailian Text-to-Video Generator
+# 🎬 Enhanced Multi-Modal Video Generator
 
-A comprehensive web application built with Gradio that provides an intuitive interface for generating videos from text descriptions using Alibaba's Bailian "wan-v1-t2v" API.
+A comprehensive web application built with Gradio that provides an intuitive interface for generating videos using Alibaba's Bailian APIs. Supports three generation modes: text-to-video, image-to-video, and keyframe-to-video generation.
 
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://python.org)
 [![Gradio](https://img.shields.io/badge/gradio-4.0%2B-orange.svg)](https://gradio.app)
@@ -50,7 +50,44 @@ A comprehensive web application built with Gradio that provides an intuitive int
 
 5. **Open your browser** and navigate to `http://localhost:7860`
 
+### 🎯 Quick Demo
+
+To test all features without starting the web interface:
+```bash
+python demo.py
+```
+
+This will demonstrate:
+- All three generation modes
+- Service factory capabilities
+- Configuration options
+- API endpoint setup
+
 ## 📋 Usage Guide
+
+### 🎯 Mode Selection
+
+The application supports three video generation modes:
+
+#### 1. 📝 Text-to-Video Generation
+- **Processing Time**: 1-2 minutes
+- **Description**: Generate videos from detailed text descriptions
+- **Models**: Wanxiang 2.2 Pro (Recommended), Wanxiang 2.1 Turbo, Wanxiang 2.1 Pro
+- **Features**: Style control, aspect ratios, negative prompts, seed control
+
+#### 2. 🖼️ Image-to-Video Generation
+- **Processing Time**: 7-10 minutes
+- **Description**: Create videos starting from a single image frame
+- **Model**: Wanxiang 2.1 Keyframe Plus
+- **Image Requirements**: JPEG/PNG/BMP/WEBP, max 10MB, 360-2000px dimensions
+- **Features**: Optional text guidance, style control
+
+#### 3. 🎞️ Keyframe-to-Video Generation
+- **Processing Time**: 7-10 minutes
+- **Description**: Generate smooth transitions between start and end frames
+- **Model**: Wanxiang 2.1 Keyframe Plus
+- **Requirements**: Two images (start and end frames) with similar composition
+- **Features**: Optional transition guidance, style control
 
 ### Basic Usage
 

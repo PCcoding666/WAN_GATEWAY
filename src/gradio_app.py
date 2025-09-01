@@ -1,89 +1,126 @@
 """
-Gradio Web Interface for Bailian Text-to-Video Generation.
+Enhanced Gradio Web Interface for Multi-Modal Video Generation.
 
 This module provides a user-friendly web interface for generating videos
-from text descriptions using the Bailian wan-v1-t2v API.
+from text, images, or keyframes using the Bailian APIs.
 """
 import gradio as gr
 import os
 import logging
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, Any
 from .config import Config
-from .text_to_video_service import TextToVideoService, VideoResult
+from .video_service_factory import VideoServiceFactory, MultiModalVideoApp
+from .text_to_video_service import VideoResult
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class GradioTextToVideoApp:
-    """Gradio application for text-to-video generation."""
+class EnhancedGradioVideoApp:
+    """Enhanced Gradio application for multi-modal video generation."""
     
     def __init__(self):
-        """Initialize the Gradio application."""
-        self.service = TextToVideoService()
-        logger.info("Gradio Text-to-Video application initialized")
+        """Initialize the Enhanced Gradio application."""
+        self.app = MultiModalVideoApp()
+        logger.info("Enhanced Gradio Video application initialized")
     
     def generate_video_handler(
         self,
-        prompt: str,
-        style: str,
-        aspect_ratio: str,
-        model: str,
-        negative_prompt: Optional[str],
-        seed: Optional[float]
+        mode: str,
+        # Text-to-Video inputs
+        text_prompt: str,
+        text_model: str,
+        text_style: str,
+        text_aspect_ratio: str,
+        text_negative_prompt: str,
+        text_seed: str,
+        # Image-to-Video inputs
+        image_file,
+        image_prompt: str,
+        image_style: str,
+        # Keyframe-to-Video inputs
+        start_frame_file,
+        end_frame_file,
+        keyframe_prompt: str,
+        keyframe_style: str
     ) -> Tuple[Optional[str], str]:
         """
         Handle video generation request from Gradio interface.
         
-        Args:
-            prompt: Text description for video generation
-            style: Selected video style
-            aspect_ratio: Selected aspect ratio
-            model: Selected model for generation
-            negative_prompt: Optional negative prompt
-            seed: Optional seed value
-            
         Returns:
             Tuple[Optional[str], str]: (video_path, status_message)
         """
         try:
-            # Convert seed to int if provided
-            seed_int = None
-            if seed is not None and seed != "":
-                try:
-                    seed_int = int(float(seed))
-                except (ValueError, TypeError):
-                    return None, "❌ Invalid seed value. Please enter a valid number."
+            logger.info(f"Generating video with mode: {mode}")
             
-            # Process negative prompt
-            neg_prompt = negative_prompt.strip() if negative_prompt else None
-            
-            logger.info(f"Generating video with prompt: {prompt[:50]}...")
-            
-            # Call the service
-            result: VideoResult = self.service.generate_video(
-                prompt=prompt,
-                style=style,
-                aspect_ratio=aspect_ratio,
-                model=model,
-                negative_prompt=neg_prompt,
-                seed=seed_int
-            )
+            # Prepare parameters based on mode
+            if mode == "Text-to-Video":
+                if not text_prompt or not text_prompt.strip():
+                    return None, "❌ Please enter a text description for video generation."
+                
+                # Convert seed to int if provided
+                seed_int = None
+                if text_seed and text_seed.strip():
+                    try:
+                        seed_int = int(float(text_seed))
+                    except (ValueError, TypeError):
+                        return None, "❌ Invalid seed value. Please enter a valid number."
+                
+                # Process negative prompt
+                neg_prompt = text_negative_prompt.strip() if text_negative_prompt else None
+                
+                result: VideoResult = self.app.generate_video(
+                    mode="text_to_video",
+                    prompt=text_prompt,
+                    model=text_model,
+                    style=Config.get_style_value_from_display(text_style),
+                    aspect_ratio=text_aspect_ratio,
+                    negative_prompt=neg_prompt,
+                    seed=seed_int
+                )
+                
+            elif mode == "Image-to-Video":
+                if image_file is None:
+                    return None, "❌ Please upload an image for video generation."
+                
+                result: VideoResult = self.app.generate_video(
+                    mode="image_to_video",
+                    image_file=image_file,
+                    prompt=image_prompt or "",
+                    style=Config.get_style_value_from_display(image_style)
+                )
+                
+            elif mode == "Keyframe-to-Video":
+                if start_frame_file is None or end_frame_file is None:
+                    return None, "❌ Please upload both start and end frame images."
+                
+                result: VideoResult = self.app.generate_video(
+                    mode="keyframe_to_video",
+                    start_frame_file=start_frame_file,
+                    end_frame_file=end_frame_file,
+                    prompt=keyframe_prompt or "",
+                    style=Config.get_style_value_from_display(keyframe_style)
+                )
+            else:
+                return None, f"❌ Unsupported generation mode: {mode}"
             
             if result.success:
-                status_msg = f"✅ Video generated successfully in {result.generation_time:.1f}s"
+                # Format status message
+                status_msg = f"✅ Video generated successfully"
+                if result.generation_time:
+                    status_msg += f" in {result.generation_time:.1f}s"
                 if result.task_id:
                     status_msg += f" (Task ID: {result.task_id})"
                 
-                # Prefer local video path for better stability, but handle fallback
+                # Prefer local video path for better stability
                 video_path = None
                 if result.local_video_path and os.path.exists(result.local_video_path):
                     video_path = result.local_video_path
                     status_msg += " - Video downloaded locally"
                 elif result.video_url:
                     video_path = result.video_url
-                    status_msg += " - Using direct URL (download failed)"
-                    logger.warning("Local download failed, using direct URL which may cause connection issues")
+                    status_msg += " - Using direct URL"
+                    logger.warning("Local download failed, using direct URL")
                 else:
                     return None, "❌ Video generated but no valid path available"
                 
@@ -98,110 +135,189 @@ class GradioTextToVideoApp:
             logger.error(error_msg)
             return None, error_msg
     
-    def create_interface(self) -> gr.Interface:
+    def create_interface(self) -> gr.Blocks:
         """
-        Create a simple Gradio interface using gr.Interface to avoid JSON schema issues.
+        Create the enhanced Gradio interface with mode selection.
         
         Returns:
-            gr.Interface: Basic Gradio interface
+            gr.Blocks: Enhanced Gradio interface
         """
-        # Simple function that matches gr.Interface expectations
-        def generate_video_simple(prompt, model, style, aspect_ratio):
-            """
-            Simple video generation function for gr.Interface.
+        # Prepare model choices for text-to-video
+        text_model_choices = []
+        for model_id in Config.get_text_to_video_models():
+            if model_id in Config.MODEL_OPTIONS:
+                model_info = Config.MODEL_OPTIONS[model_id]
+                text_model_choices.append(model_info["name"])
+        
+        # Style options for display
+        style_choices = [Config.get_style_display_name(style) for style in Config.STYLE_OPTIONS]
+        
+        with gr.Blocks(title="🎬 Multi-Modal Video Generator", theme=gr.themes.Soft()) as interface:
+            gr.Markdown("# 🎬 Multi-Modal Video Generator")
+            gr.Markdown("Generate videos from text descriptions, single images, or start/end frame pairs using Alibaba's Bailian APIs.")
             
-            Args:
-                prompt: Text description for video generation
-                model: Selected model
-                style: Selected video style
-                aspect_ratio: Selected aspect ratio
+            with gr.Row():
+                mode_selector = gr.Radio(
+                    choices=["Text-to-Video", "Image-to-Video", "Keyframe-to-Video"],
+                    label="🎯 Generation Mode",
+                    value="Text-to-Video",
+                    info="Choose how you want to generate your video"
+                )
+            
+            # Text-to-Video inputs
+            with gr.Group(visible=True) as text_group:
+                gr.Markdown("### 📝 Text-to-Video Generation")
+                with gr.Row():
+                    with gr.Column(scale=2):
+                        text_prompt = gr.Textbox(
+                            label="Video Description",
+                            placeholder="Describe the video you want to generate...",
+                            lines=3
+                        )
+                        text_negative_prompt = gr.Textbox(
+                            label="Negative Prompt (Optional)",
+                            placeholder="What you don't want to see in the video...",
+                            lines=2
+                        )
+                    with gr.Column(scale=1):
+                        text_model = gr.Radio(
+                            label="Model",
+                            choices=text_model_choices,
+                            value=text_model_choices[0] if text_model_choices else "Wanxiang 2.2 Pro"
+                        )
+                        text_style = gr.Dropdown(
+                            label="Style",
+                            choices=style_choices,
+                            value=style_choices[0] if style_choices else "Auto"
+                        )
+                        text_aspect_ratio = gr.Radio(
+                            label="Aspect Ratio",
+                            choices=["16:9", "1:1", "9:16"],
+                            value="16:9"
+                        )
+                        text_seed = gr.Textbox(
+                            label="Seed (Optional)",
+                            placeholder="Random seed for reproducibility"
+                        )
+            
+            # Image-to-Video inputs
+            with gr.Group(visible=False) as image_group:
+                gr.Markdown("### 🖼️ Image-to-Video Generation")
+                gr.Markdown("*Expected processing time: 7-10 minutes*")
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        image_file = gr.File(
+                            label="Upload Starting Image",
+                            file_types=["image"]
+                        )
+                    with gr.Column(scale=1):
+                        image_prompt = gr.Textbox(
+                            label="Guidance Prompt (Optional)",
+                            placeholder="Describe the desired motion or style...",
+                            lines=3
+                        )
+                        image_style = gr.Dropdown(
+                            label="Style",
+                            choices=style_choices,
+                            value=style_choices[0] if style_choices else "Auto"
+                        )
+            
+            # Keyframe-to-Video inputs
+            with gr.Group(visible=False) as keyframe_group:
+                gr.Markdown("### 🎞️ Keyframe-to-Video Generation")
+                gr.Markdown("*Expected processing time: 7-10 minutes*")
+                with gr.Row():
+                    with gr.Column():
+                        start_frame_file = gr.File(
+                            label="Upload Start Frame",
+                            file_types=["image"]
+                        )
+                    with gr.Column():
+                        end_frame_file = gr.File(
+                            label="Upload End Frame",
+                            file_types=["image"]
+                        )
+                with gr.Row():
+                    keyframe_prompt = gr.Textbox(
+                        label="Transition Guidance (Optional)",
+                        placeholder="Describe the desired transition between frames...",
+                        lines=2
+                    )
+                    keyframe_style = gr.Dropdown(
+                        label="Style",
+                        choices=style_choices,
+                        value=style_choices[0] if style_choices else "Auto"
+                    )
+            
+            # Generation button and outputs
+            with gr.Row():
+                generate_btn = gr.Button("🎬 Generate Video", variant="primary", size="lg")
+            
+            with gr.Row():
+                status_output = gr.Textbox(label="Status", interactive=False, lines=2)
+                video_output = gr.Video(label="Generated Video", height=400)
+            
+            # Mode switching logic
+            def update_visibility(mode):
+                return (
+                    gr.update(visible=(mode == "Text-to-Video")),
+                    gr.update(visible=(mode == "Image-to-Video")),
+                    gr.update(visible=(mode == "Keyframe-to-Video"))
+                )
+            
+            mode_selector.change(
+                update_visibility,
+                inputs=[mode_selector],
+                outputs=[text_group, image_group, keyframe_group]
+            )
+            
+            # Generation event
+            generate_btn.click(
+                self.generate_video_handler,
+                inputs=[
+                    mode_selector,
+                    # Text-to-Video inputs
+                    text_prompt, text_model, text_style, text_aspect_ratio, 
+                    text_negative_prompt, text_seed,
+                    # Image-to-Video inputs
+                    image_file, image_prompt, image_style,
+                    # Keyframe-to-Video inputs
+                    start_frame_file, end_frame_file, keyframe_prompt, keyframe_style
+                ],
+                outputs=[video_output, status_output]
+            )
+            
+            # Help section
+            with gr.Accordion("ℹ️ Help & Information", open=False):
+                gr.Markdown("""
+                ### 📋 Generation Modes
                 
-            Returns:
-                Tuple[str, str]: (status_message, video_url_or_none)
-            """
-            if not prompt or not prompt.strip():
-                return "Please enter a video description", None
-            
-            # Debug logging
-            logger.info(f"Interface inputs - prompt: {prompt[:30]}..., model: {model}, style: {style}, aspect_ratio: {aspect_ratio}")
-            
-            # Basic style mapping
-            style_map = {
-                "Auto": "<auto>", 
-                "Cinematic": "Cinematic", 
-                "Anime": "Anime",
-                "Realistic": "Realistic"
-            }
-            
-            # Model mapping (from display name to API name)
-            model_map = {}
-            for model_id, model_info in Config.MODEL_OPTIONS.items():
-                model_map[model_info["name"]] = model_id
-            
-            api_style = style_map.get(style, "<auto>")
-            api_model = model_map.get(model, "wan2.2-t2v-plus")
-            
-            try:
-                # Generate video with model parameter
-                result = self.generate_video_handler(
-                    prompt, api_style, aspect_ratio, api_model, None, None
-                )
-                # Return status and video (gr.Interface expects this format)
-                video_url = result[0] if result[0] else None
-                status = result[1]
-                return status, video_url
-            except Exception as e:
-                return f"Error: {str(e)}", None
-        
-        # Prepare model choices for display
-        model_choices = []
-        model_descriptions = []
-        for model_id, model_info in Config.MODEL_OPTIONS.items():
-            display_name = model_info["name"]
-            description = model_info["description"]
-            resolutions = ", ".join(model_info["resolutions"])
-            framerate = model_info["framerate"]
-            duration = model_info["duration"]
-            
-            model_choices.append(display_name)
-            model_descriptions.append(f"{description} | Resolution: {resolutions} | Framerate: {framerate} | Duration: {duration}")
-        
-        # Create simple gr.Interface (older, more stable API)
-        interface = gr.Interface(
-            fn=generate_video_simple,
-            inputs=[
-                gr.Textbox(
-                    label="Video Description",
-                    placeholder="Describe the video you want to generate...",
-                    lines=3
-                ),
-                gr.Radio(
-                    label="Model",
-                    choices=model_choices,
-                    value=model_choices[0] if model_choices else "Wanxiang 2.2 Pro (Recommended)",
-                    info="Choose the model for video generation"
-                ),
-                gr.Radio(
-                    label="Style",
-                    choices=["Auto", "Cinematic", "Anime", "Realistic"],
-                    value="Auto",
-                    info="Video generation style"
-                ),
-                gr.Radio(
-                    label="Aspect Ratio",
-                    choices=["16:9", "1:1", "9:16"],
-                    value="16:9",
-                    info="Video aspect ratio"
-                )
-            ],
-            outputs=[
-                gr.Textbox(label="Status"),
-                gr.Video(label="Generated Video")
-            ],
-            title="🎬 Bailian Text-to-Video Generator",
-            description="",
-            theme="default"
-        )
+                **Text-to-Video:** Generate videos from text descriptions
+                - Processing time: 1-2 minutes
+                - Supports multiple models and styles
+                - Customizable aspect ratios and advanced settings
+                
+                **Image-to-Video:** Generate videos from a single starting image
+                - Processing time: 7-10 minutes  
+                - Uses advanced keyframe model
+                - Optional text guidance for motion
+                
+                **Keyframe-to-Video:** Generate videos from start and end frames
+                - Processing time: 7-10 minutes
+                - Creates smooth transitions between frames
+                - Optional text guidance for transition style
+                
+                ### 📏 Image Requirements
+                - Formats: JPEG, PNG, BMP, WEBP
+                - File size: Maximum 10MB
+                - Dimensions: 360px to 2000px (width and height)
+                
+                ### ⚡ Tips for Better Results
+                - Use detailed, specific descriptions
+                - Include style keywords (cinematic, realistic, animated)
+                - For keyframes, ensure similar composition between start/end frames
+                - Be patient with longer processing times for image/keyframe modes
+                """)
         
         return interface
     
@@ -223,7 +339,7 @@ class GradioTextToVideoApp:
         """
         interface = self.create_interface()
         
-        logger.info(f"Launching Gradio app on {server_name}:{server_port}")
+        logger.info(f"Launching Enhanced Gradio app on {server_name}:{server_port}")
         
         try:
             interface.launch(
@@ -232,11 +348,10 @@ class GradioTextToVideoApp:
                 share=share,
                 debug=debug,
                 show_error=True,
-                show_api=False,  # Disable API documentation
-                quiet=True  # Reduce verbose output
+                show_api=False,
+                quiet=True
             )
         except Exception as e:
-            # This fallback logic is useful for environments where localhost is not directly accessible
             if "localhost is not accessible" in str(e) or "shareable link must be created" in str(e):
                 logger.warning("Localhost not accessible, creating shareable link...")
                 interface.launch(
@@ -245,24 +360,37 @@ class GradioTextToVideoApp:
                     share=True,
                     debug=debug,
                     show_error=True,
-                    show_api=False,  # Also disable API here
+                    show_api=False,
                     quiet=True
                 )
             else:
-                # Re-raise the exception if it's not the specific share link error
                 raise
 
-def create_app() -> "GradioTextToVideoApp":
+def create_app() -> "EnhancedGradioVideoApp":
     """
-    Factory function to create the Gradio application.
+    Factory function to create the Enhanced Gradio application.
     
     Returns:
-        GradioTextToVideoApp: Configured application instance
+        EnhancedGradioVideoApp: Configured application instance
     """
-    return GradioTextToVideoApp()
+    return EnhancedGradioVideoApp()
 
 # Default interface creation for direct import
-def create_interface() -> gr.Interface:
-    """Create the default Gradio interface."""
+def create_interface() -> gr.Blocks:
+    """Create the default enhanced Gradio interface."""
     app = create_app()
     return app.create_interface()
+
+# Maintain backward compatibility
+class GradioTextToVideoApp:
+    """Legacy class for backward compatibility."""
+    
+    def __init__(self):
+        self.app = EnhancedGradioVideoApp()
+        logger.warning("GradioTextToVideoApp is deprecated. Use EnhancedGradioVideoApp instead.")
+    
+    def create_interface(self):
+        return self.app.create_interface()
+    
+    def launch(self, **kwargs):
+        return self.app.launch(**kwargs)

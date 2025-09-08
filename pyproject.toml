@@ -1,21 +1,27 @@
 [project]
 name = "wan-gateway"
-version = "1.0.0"
-description = "A Gradio-based text-to-video generation application using Alibaba Bailian API"
+version = "1.2.0"
+description = "A comprehensive Gradio-based multi-modal video generation application using Alibaba Bailian APIs"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "WAN Gateway Team"}
+    {name = "WAN Gateway Team", email = "support@wan-gateway.com"}
 ]
+keywords = ["video-generation", "ai", "gradio", "alibaba", "bailian", "multimodal"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Web Environment",
+    "Framework :: Gradio",
     "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Video :: Display",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 requires-python = ">=3.13"
 dependencies = [
@@ -23,6 +29,8 @@ dependencies = [
     "requests>=2.28.0", 
     "python-dotenv>=1.0.0",
     "dashscope>=1.14.0",
+    "Pillow>=10.0.0",
+    "oss2>=2.18.0"
 ]
 
 

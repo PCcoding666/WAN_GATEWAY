@@ -1,365 +1,398 @@
-# 🎬 Enhanced Multi-Modal Video Generator
+# 🎬 Wan Gateway - Multi-Modal Video Generator
 
-A comprehensive web application built with Gradio that provides an intuitive interface for generating videos using Alibaba's Bailian APIs. Supports three generation modes: text-to-video, image-to-video, and keyframe-to-video generation.
+一个基于 Gradio 构建的综合性 Web 应用程序，提供直观的界面来使用阿里巴巴的百炼 API 生成视频。支持三种生成模式：文本生成视频、图像生成视频和关键帧生成视频。
 
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://python.org)
-[![Gradio](https://img.shields.io/badge/gradio-4.0%2B-orange.svg)](https://gradio.app)
+[![Python Version](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://python.org)
+[![Gradio](https://img.shields.io/badge/gradio-5.43.1%2B-orange.svg)](https://gradio.app)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## ✨ Features
+## ✨ 核心功能
 
-- **🎥 Text-to-Video Generation**: Convert text descriptions into high-quality videos
-- **🎨 Multiple Styles**: Choose from various artistic styles (Cinematic, Anime, Realistic, etc.)
-- **📐 Flexible Ratios**: Support for different aspect ratios (16:9, 1:1, 9:16)
-- **⚙️ Advanced Settings**: Fine-tune generation with negative prompts and seeds
-- **📱 Responsive UI**: Beautiful, user-friendly interface with real-time feedback
-- **🔄 Loading States**: Clear visual feedback during video generation
-- **📊 Status Tracking**: Detailed progress and error reporting
-- **🔧 Easy Configuration**: Simple environment setup and deployment
+- **🎥 文本生成视频**: 将文本描述转换为高质量视频
+- **🖼️ 图像生成视频**: 从单张图像生成动态视频
+- **🎞️ 关键帧生成视频**: 基于起始和结束帧生成平滑过渡视频
+- **🎨 多种风格选择**: 支持电影级、动漫、写实等多种艺术风格
+- **📐 灵活的宽高比**: 支持 16:9、1:1、9:16 等不同宽高比
+- **⚙️ 高级设置**: 支持负面提示、种子控制等精细调节
+- **🤖 智能模型选择**: 根据生成模式自动选择最优模型
+- **📱 响应式界面**: 美观且用户友好的界面，实时反馈
+- **📊 状态跟踪**: 详细的进度和错误报告
+- **☁️ OSS 集成**: 可选的阿里云 OSS 存储支持
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### Prerequisites
+### 环境要求
 
-- Python 3.8 or higher
-- A valid Alibaba DashScope API key
+- Python 3.13 或更高版本
+- 有效的阿里巴巴百炼 API 密钥
+- 稳定的互联网连接
 
-### Installation
+### 安装步骤
 
-1. **Clone the repository**:
+1. **克隆仓库**:
    ```bash
-   git clone <repository-url>
-   cd gradio-bailian-t2v
+   git clone https://github.com/PCcoding666/WAN_GATEWAY.git
+   cd Wan_Gateway
    ```
 
-2. **Install dependencies**:
+2. **安装依赖**:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Set up environment variables**:
-   Create a `.env` file in the project root:
+3. **配置环境变量**:
+   复制 `.env.example` 到 `.env` 并填写配置:
    ```bash
+   cp .env.example .env
+   # 编辑 .env 文件，填入你的 API 密钥
    DASHSCOPE_API_KEY=your_api_key_here
    ```
 
-4. **Run the application**:
+4. **运行应用程序**:
    ```bash
    python main.py
    ```
 
-5. **Open your browser** and navigate to `http://localhost:7860`
+5. **打开浏览器** 访问 `http://localhost:7860`
 
-### 🎯 Quick Demo
+### 🎯 快速演示
 
-To test all features without starting the web interface:
+无需启动 Web 界面即可测试所有功能:
 ```bash
 python demo.py
 ```
 
-This will demonstrate:
-- All three generation modes
-- Service factory capabilities
-- Configuration options
-- API endpoint setup
+演示内容包括:
+- 所有三种生成模式的配置
+- 服务工厂功能展示
+- 配置选项验证
+- API 端点设置检查
+- 模型兼容性测试
 
-## 📋 Usage Guide
+## 📋 使用指南
 
-### 🎯 Mode Selection
+### 🎯 生成模式选择
 
-The application supports three video generation modes:
+应用支持三种视频生成模式：
 
-#### 1. 📝 Text-to-Video Generation
-- **Processing Time**: 1-2 minutes
-- **Description**: Generate videos from detailed text descriptions
-- **Models**: Wanxiang 2.2 Pro (Recommended), Wanxiang 2.1 Turbo, Wanxiang 2.1 Pro
-- **Features**: Style control, aspect ratios, negative prompts, seed control
+#### 1. 📝 文本生成视频
+- **处理时间**: 1-2 分钟
+- **描述**: 通过详细的文本描述生成视频
+- **可用模型**: wan2.2-t2v-plus（推荐）、wanx2.1-t2v-turbo、wanx2.1-t2v-plus
+- **分辨率支持**: 480P-1080P
+- **功能**: 风格控制、宽高比、负面提示、种子控制
 
-#### 2. 🖼️ Image-to-Video Generation
-- **Processing Time**: 7-10 minutes
-- **Description**: Create videos starting from a single image frame
-- **Model**: Wanxiang 2.1 Keyframe Plus
-- **Image Requirements**: JPEG/PNG/BMP/WEBP, max 10MB, 360-2000px dimensions
-- **Features**: Optional text guidance, style control
+#### 2. 🖼️ 图像生成视频  
+- **处理时间**: 7-10 分钟
+- **描述**: 从单张图像生成动态视频
+- **可用模型**: wan2.2-i2v-flash（最快）、wan2.2-i2v-plus、wanx2.1-i2v-plus、wanx2.1-i2v-turbo
+- **图像要求**: JPEG/PNG/BMP/WEBP，最大 10MB，360-2000px 尺寸
+- **功能**: 可选文本指导、风格控制
 
-#### 3. 🎞️ Keyframe-to-Video Generation
-- **Processing Time**: 7-10 minutes
-- **Description**: Generate smooth transitions between start and end frames
-- **Model**: Wanxiang 2.1 Keyframe Plus
-- **Requirements**: Two images (start and end frames) with similar composition
-- **Features**: Optional transition guidance, style control
+#### 3. 🎞️ 关键帧生成视频
+- **处理时间**: 7-10 分钟  
+- **描述**: 在起始和结束帧之间生成平滑过渡
+- **可用模型**: wanx2.1-kf2v-plus
+- **要求**: 两张构图相似的图像（起始帧和结束帧）
+- **功能**: 可选过渡指导、风格控制
 
-### Basic Usage
+### 基本使用
 
-1. **Enter a prompt**: Describe the video you want to generate
-   - Example: "A serene sunset over mountains with birds flying"
+1. **选择生成模式**: 在界面上方选择所需的生成模式
 
-2. **Select style**: Choose from available artistic styles
-   - Auto (Recommended), Cinematic, Anime, Realistic, Abstract, Documentary, Commercial
+2. **输入内容**（根据所选模式）：
+   - **文本模式**: 输入视频描述
+     - 示例: “在山脊上的宁静日落，有鸟儿在飞翔”
+   - **图像模式**: 上传一张图像
+   - **关键帧模式**: 上传起始和结束两张图像
 
-3. **Choose aspect ratio**: Select video dimensions
-   - 16:9 (Widescreen), 1:1 (Square), 9:16 (Portrait)
+3. **选择风格**: 从可用的艺术风格中选择
+   - 自动（推荐）、电影级、动漫、写实、抽象、纪录片、广告
 
-4. **Click "Generate Video"**: Wait for the AI to create your video
+4. **设置宽高比**: 选择视频尺寸
+   - 16:9（宽屏）、1:1（正方形）、9:16（竖屏）
 
-### Advanced Settings
+5. **点击“生成视频”**: 等待 AI 创建你的视频
 
-Expand the "Advanced Settings" section for more control:
+### 高级设置
 
-- **Negative Prompt**: Specify what to avoid in the video
-  - Example: "blurry, low quality, distorted"
+对于文本生成视频模式，展开“高级设置”部分获得更多控制：
 
-- **Seed**: Enter a number for reproducible results
-  - Same seed + same prompt = similar video
+- **负面提示**: 指定在视频中要避免的内容
+  - 示例: “模糊、低质量、扰曲”
 
-### Command Line Options
+- **种子**: 输入数字以获得可重现的结果
+  - 相同种子 + 相同提示 = 相似观频
 
-```bash
+- **模型选择**: 根据需求选择不同模型
+  - wan2.2-t2v-plus: 最新高质量模型（推荐）
+  - wanx2.1-t2v-turbo: 快速生成模型
+  - wanx2.1-t2v-plus: 高质量生成模型
+
+### 命令行选项
+
+```
 python main.py [OPTIONS]
 
-Options:
-  --host TEXT       Host to bind the server to (default: 0.0.0.0)
-  --port INTEGER    Port to run the server on (default: 7860)
-  --share           Create a public link for the app
-  --debug           Enable debug mode with verbose logging
-  --check-env       Check environment configuration and exit
-  --help            Show this message and exit
+选项:
+  --host TEXT       绑定服务器到指定主机 (默认: 127.0.0.1)
+  --port INTEGER    运行服务器的端口 (默认: 7860)
+  --share           为应用程序创建公共链接
+  --debug           启用详细日志的调试模式
+  --check-env       检查环境配置并退出
+  --help            显示此帮助信息并退出
 ```
 
-#### Examples
+#### 使用示例
 
-```bash
-# Run on a different port
+```
+# 在不同端口运行
 python main.py --port 8080
 
-# Create a public link (for sharing)
+# 创建公共链接（用于分享）
 python main.py --share
 
-# Debug mode with verbose logging
+# 详细日志的调试模式
 python main.py --debug
 
-# Check if environment is properly configured
+# 检查环境是否正确配置
 python main.py --check-env
+
+# 绑定到所有网络接口上
+python main.py --host 0.0.0.0
 ```
 
-## 🏗️ Project Structure
+## 🏗️ 项目结构
 
 ```
-gradio-bailian-t2v/
-├── src/
-│   ├── __init__.py                # Package initialization
-│   ├── config.py                  # Configuration management
-│   ├── text_to_video_service.py   # Core API service
-│   ├── gradio_app.py              # Gradio UI implementation
-│   └── utils.py                   # Helper functions
-
-├── .env                           # Environment variables (create this)
-├── requirements.txt               # Python dependencies
-├── main.py                        # Application entry point
-└── README.md                      # This documentation
+Wan_Gateway/
+├── src/                           # 核心源代码目录
+│   ├── __init__.py                # 包初始化
+│   ├── config.py                  # 配置管理
+│   ├── base_video_service.py      # 基础视频服务类
+│   ├── text_to_video_service.py   # 文本生成视频服务
+│   ├── image_to_video_service.py  # 图像生成视频服务
+│   ├── keyframe_to_video_service.py # 关键帧生成视频服务
+│   ├── video_service_factory.py   # 服务工厂和多模态应用
+│   ├── gradio_app.py              # Gradio Web 界面
+│   ├── oss_service.py             # OSS 云存储服务
+│   └── utils.py                   # 工具函数
+├── .env.example                   # 环境变量模板
+├── requirements.txt               # Python 依赖
+├── pyproject.toml                 # 项目配置文件
+├── main.py                        # 应用程序入口
+├── demo.py                        # 功能演示脚本
+├── Dockerfile                     # Docker 容器配置
+├── docker-compose.yml             # Docker Compose 配置
+├── deploy-production.sh           # 生产部署脚本
+├── deploy-to-cloud.sh             # 云部署脚本
+└── README.md                      # 项目文档
 ```
 
-## 🔧 Configuration
+## ⚙️ 配置说明
 
-### Environment Variables
+### 环境变量
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `DASHSCOPE_API_KEY` | Your Alibaba DashScope API key | Yes | - |
-| `API_ENDPOINT` | API endpoint URL | No | Official endpoint |
+| 变量 | 描述 | 必需 | 默认值 |
+|----------|-------------|----------|----------|
+| `DASHSCOPE_API_KEY` | 阿里巴巴百炼 API 密钥 | 是 | - |
+| `OSS_ACCESS_KEY_ID` | OSS 访问密钥 ID（可选） | 否 | - |
+| `OSS_ACCESS_KEY_SECRET` | OSS 访问密钥（可选） | 否 | - |
+| `OSS_ENDPOINT` | OSS 服务端点（可选） | 否 | https://oss-cn-hangzhou.aliyuncs.com |
+| `OSS_BUCKET_NAME` | OSS 存储桶名称（可选） | 否 | wan-gateway-images |
 
-### Application Settings
+### 应用程序设置
 
-Key configuration options in `src/config.py`:
+`src/config.py` 中的关键配置选项：
 
 ```python
-# UI Settings
-MAX_PROMPT_LENGTH = 1000        # Maximum prompt length
-DEFAULT_STYLE = "<auto>"        # Default style selection
-DEFAULT_ASPECT_RATIO = "16:9"   # Default aspect ratio
+# UI 设置
+MAX_PROMPT_LENGTH = 1000        # 最大提示长度
+DEFAULT_STYLE = "<auto>"        # 默认风格选择
+DEFAULT_ASPECT_RATIO = "16:9"   # 默认宽高比
+DEFAULT_MODEL = "wan2.2-t2v-plus" # 默认模型
 
-# API Settings
-MAX_RETRIES = 3                 # Maximum retry attempts
-POLLING_INTERVAL = 2            # Polling interval (seconds)
-REQUEST_TIMEOUT = 30            # Request timeout (seconds)
-MAX_POLL_TIME = 300            # Maximum polling time (5 minutes)
+# API 设置
+MAX_RETRIES = 3                 # 最大重试次数
+POLLING_INTERVAL = 2            # 文本生成视频轮询间隔（秒）
+KEYFRAME_POLLING_INTERVAL = 30  # 图像/关键帧轮询间隔（秒）
+REQUEST_TIMEOUT = 30            # 请求超时（秒）
+MAX_POLL_TIME = 300             # 文本生成最大轮询时间（5分钟）
+KEYFRAME_MAX_POLL_TIME = 900    # 关键帧生成最大轮询时间（15分钟）
+
+# 图像上传设置
+IMAGE_UPLOAD_CONFIG = {
+    "max_size_mb": 10,
+    "allowed_formats": ["JPEG", "JPG", "PNG", "BMP", "WEBP"],
+    "min_dimension": 360,
+    "max_dimension": 2000
+}
 ```
 
-## 🎨 Supported Styles
+## 🎨 支持的风格选项
 
-| Style | Description | Best For |
+| 风格 | 描述 | 适用场景 |
 |-------|-------------|----------|
-| **Auto** | Automatic style selection | General use, recommended |
-| **Cinematic** | Movie-like quality with dramatic lighting | Professional videos, trailers |
-| **Anime** | Animation/cartoon style | Character-focused content |
-| **Realistic** | Photorealistic rendering | Documentary-style content |
-| **Abstract** | Artistic, non-realistic style | Creative, artistic videos |
-| **Documentary** | Natural, informative style | Educational content |
-| **Commercial** | Polished, advertisement-style | Marketing materials |
+| **自动** | 自动风格选择 | 通用使用，推荐 |
+| **电影级** | 电影质量和戏剧性光照 | 专业视频，预告片 |
+| **动漫** | 动画/卡通风格 | 角色为主的内容 |
+| **写实** | 逼真渲染 | 纪录片风格内容 |
+| **抽象** | 艺术性非写实风格 | 创意艺术视频 |
+| **纪录片** | 自然、信息性风格 | 教育内容 |
+| **广告** | 精致的广告风格 | 营销材料 |
 
-## 📐 Aspect Ratios
+## 📐 宽高比选项
 
-| Ratio | Description | Use Case |
+| 比例 | 描述 | 使用场景 |
 |-------|-------------|----------|
-| **16:9** | Widescreen format | YouTube, web videos, presentations |
-| **1:1** | Square format | Instagram posts, social media |
-| **9:16** | Portrait/vertical | TikTok, Instagram stories, mobile |
+| **16:9** | 宽屏格式 | YouTube，网络视频，演示文稿 |
+| **1:1** | 正方形格式 | Instagram 帖子，社交媒体 |
+| **9:16** | 竖屏/垂直格式 | TikTok，Instagram 故事，移动设备 |
 
+## 🐛 故障排除
 
+### 常见问题
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### 1. Environment Configuration Error
+#### 1. 环境配置错误
 ```
 ❌ Configuration error: DASHSCOPE_API_KEY environment variable is required
 ```
-**Solution**: Ensure your `.env` file contains a valid API key:
+**解决方案**: 确保您的 `.env` 文件包含有效的 API 密钥：
 ```bash
 DASHSCOPE_API_KEY=your_actual_api_key_here
 ```
 
-#### 2. Import Errors
+#### 2. 导入错误
 ```
 ❌ Import error: No module named 'gradio'
 ```
-**Solution**: Install dependencies:
+**解决方案**: 安装依赖：
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 3. Connection/Timeout Errors
+#### 3. 连接/超时错误
 ```
 ❌ Connection error - please check your internet connection
 ```
-**Solutions**:
-- Check internet connectivity
-- Verify API key is valid and has quota
-- Try again after a few moments (may be rate limited)
+**解决方案**:
+- 检查互联网连接
+- 验证 API 密钥是否有效且有配额
+- 稍后再试（可能被限流）
 
-#### 4. Generation Failures
+#### 4. 生成失败
 ```
 ❌ Generation failed: Invalid request
 ```
-**Solutions**:
-- Ensure prompt is descriptive and appropriate
-- Try different styles or aspect ratios
-- Check if prompt is within length limits (1000 characters)
+**解决方案**:
+- 确保提示描述详细且合适
+- 尝试不同的风格或宽高比
+- 检查提示是否在长度限制内（1000 字符）
 
-### Debug Mode
+### 调试模式
 
-Enable debug mode for detailed logging:
+启用调试模式进行详细日志记录：
 ```bash
 python main.py --debug
 ```
 
-This provides verbose output including:
-- API request/response details
-- Error stack traces
-- Performance metrics
-- Configuration validation steps
+这提供详细输出，包括：
+- API 请求/响应详细信息
+- 错误堆栈跟踪
+- 性能指标
+- 配置验证步骤
 
-## 📊 Performance Tips
+## 📊 性能优化建议
 
-### For Better Generation Results
+### 获得更好的生成结果
 
-1. **Descriptive Prompts**: Include details about:
-   - Scene setting and environment
-   - Lighting conditions (sunset, bright, dim)
-   - Camera movement (pan, zoom, static)
-   - Mood and atmosphere
+1. **描述性提示**: 包含以下细节：
+   - 场景设置和环境
+   - 光照条件（日落、明亮、昏暗）
+   - 摄像机移动（平移、缩放、静态）
+   - 情绪和氛围
 
-2. **Optimal Prompt Length**: 
-   - Aim for 50-200 characters
-   - Include key visual elements
-   - Avoid overly complex descriptions
+2. **最佳提示长度**: 
+   - 目标为 50-200 个字符
+   - 包含关键视觉元素
+   - 避免过于复杂的描述
 
-3. **Style Selection**:
-   - Use "Auto" for general content
-   - Choose specific styles for targeted aesthetics
-   - "Cinematic" works well for dramatic scenes
+3. **风格选择**:
+   - 通用内容使用"自动"
+   - 针对特定美学选择特定风格
+   - "电影级"适合戏剧性场景
 
-4. **Aspect Ratio Choice**:
-   - 16:9 for most web/YouTube content
-   - 1:1 for social media posts
-   - 9:16 for mobile-first content
+4. **宽高比选择**:
+   - 16:9 适合大多数网络/YouTube 内容
+   - 1:1 适合社交媒体帖子
+   - 9:16 适合移动优先内容
 
-### For Better Performance
+### 获得更好的性能
 
-1. **System Requirements**:
-   - Stable internet connection
-   - Modern web browser
-   - Sufficient system memory
+1. **系统要求**:
+   - 稳定的互联网连接
+   - 现代网络浏览器
+   - 充足的系统内存
 
-2. **API Usage**:
-   - Respect rate limits
-   - Monitor quota usage
-   - Use caching for repeated requests
+2. **API 使用**:
+   - 遵守限流规则
+   - 监控配额使用情况
+   - 对重复请求使用缓存
 
-## 🔌 API Integration
+## 🔌 API 集成说明
 
-The application integrates with Alibaba Bailian's text-to-video API:
+该应用程序集成阿里巴巴百炼的多模态视频生成 API：
 
-### Request Format
-```json
-{
-  "model": "wanx-v1",
-  "input": {
-    "text": "Your video description",
-    "style": "Cinematic",
-    "aspect_ratio": "16:9"
-  },
-  "parameters": {
-    "negative_prompt": "Optional exclusions",
-    "seed": 42
-  }
-}
-```
+### 支持的模型
 
-### Response Handling
-- **Asynchronous processing** with task polling
-- **Status monitoring** (PENDING → RUNNING → SUCCEEDED/FAILED)
-- **Automatic retries** for failed requests
-- **Timeout handling** (5-minute maximum)
+- **文本生成视频**: wan2.2-t2v-plus, wanx2.1-t2v-turbo, wanx2.1-t2v-plus
+- **图像生成视频**: wan2.2-i2v-flash, wan2.2-i2v-plus, wanx2.1-i2v-plus, wanx2.1-i2v-turbo
+- **关键帧生成视频**: wanx2.1-kf2v-plus
 
-## 🤝 Contributing
+### 响应处理
+- **异步处理** 带任务轮询
+- **状态监控** (PENDING → RUNNING → SUCCEEDED/FAILED)
+- **自动重试** 处理失败的请求
+- **超时处理** (文本5分钟，图像/关键帧15分钟最大值)
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Ensure code quality and documentation
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+## 🤝 贡献指南
 
-## 📜 License
+1. Fork 仓库
+2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
+3. 进行更改
+4. 确保代码质量和文档
+5. 提交更改 (`git commit -m 'Add amazing feature'`)
+6. 推送到分支 (`git push origin feature/amazing-feature`)
+7. 打开 Pull Request
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 📜 许可证
 
-## 🙏 Acknowledgments
+本项目根据 MIT 许可证获得许可 - 有关详细信息，请参阅 [LICENSE](LICENSE) 文件。
 
-- **Alibaba Cloud** for the Bailian text-to-video API
-- **Gradio** for the amazing web interface framework
-- **Python Community** for excellent libraries and tools
+## 🙏 致谢
 
-## 📞 Support
+- **阿里云** 提供百炼多模态视频生成 API
+- **Gradio** 提供出色的 Web 界面框架  
+- **Python 社区** 提供优秀的库和工具
 
-If you encounter any issues or have questions:
+## 📞 技术支持
 
-1. Check the [Troubleshooting](#-troubleshooting) section
-2. Run environment check: `python main.py --check-env`
-3. Enable debug mode: `python main.py --debug`
-4. Check application logs for detailed error information
+如果您遇到任何问题或有疑问：
 
-## 🚦 Status
+1. 查看 [故障排除](#-故障排除) 部分
+2. 运行环境检查：`python main.py --check-env`
+3. 启用调试模式：`python main.py --debug`
+4. 查看应用程序日志获取详细错误信息
 
-- ✅ Core functionality implemented
-- ✅ Robust error handling and logging
-- ✅ Comprehensive documentation
-- ✅ Error handling and validation
-- ✅ Production-ready code
+## 🚦 项目状态
+
+- ✅ 多模态视频生成功能完整实现
+- ✅ 强大的错误处理和日志记录
+- ✅ 全面的文档
+- ✅ 生产就绪的代码
+- ✅ Docker 和云部署支持
+- ✅ OSS 云存储集成
 
 ---
 
-**Built with ❤️ using Python and Gradio**
+**使用 ❤️ 通过 Python 和 Gradio 构建**

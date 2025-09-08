@@ -152,7 +152,7 @@ class EnhancedGradioVideoApp:
         # Style options for display
         style_choices = [Config.get_style_display_name(style) for style in Config.STYLE_OPTIONS]
         
-        with gr.Blocks(title="🎬 Multi-Modal Video Generator", theme=gr.themes.Soft()) as interface:
+        with gr.Blocks(title="🎬 Multi-Modal Video Generator", theme=gr.themes.Soft(), analytics_enabled=False) as interface:
             gr.Markdown("# 🎬 Multi-Modal Video Generator")
             gr.Markdown("Generate videos from text descriptions, single images, or start/end frame pairs using Alibaba's Bailian APIs.")
             
@@ -208,7 +208,8 @@ class EnhancedGradioVideoApp:
                     with gr.Column(scale=1):
                         image_file = gr.File(
                             label="Upload Starting Image",
-                            file_types=["image"]
+                            file_types=["image"],
+                            type="filepath"
                         )
                     with gr.Column(scale=1):
                         image_prompt = gr.Textbox(
@@ -230,12 +231,14 @@ class EnhancedGradioVideoApp:
                     with gr.Column():
                         start_frame_file = gr.File(
                             label="Upload Start Frame",
-                            file_types=["image"]
+                            file_types=["image"],
+                            type="filepath"
                         )
                     with gr.Column():
                         end_frame_file = gr.File(
                             label="Upload End Frame",
-                            file_types=["image"]
+                            file_types=["image"],
+                            type="filepath"
                         )
                 with gr.Row():
                     keyframe_prompt = gr.Textbox(

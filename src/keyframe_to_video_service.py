@@ -7,13 +7,14 @@ using Alibaba's Bailian wan-kf2v API.
 import json
 import time
 import logging
-import base64
+# import base64  # No longer needed - using OSS URLs
 from typing import Optional, Tuple
 from PIL import Image
 import requests
 from .config import Config
 from .base_video_service import BaseVideoService
 from .text_to_video_service import VideoResult
+from .oss_service import oss_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -76,20 +77,20 @@ class KeyFrameVideoService(BaseVideoService):
                     error_message=validation_error
                 )
             
-            # Process both images
-            start_base64, start_info = self._process_image_upload(start_frame_file, "start")
-            end_base64, end_info = self._process_image_upload(end_frame_file, "end")
+            # Process both images and upload to OSS
+            start_public_url, start_info = self._process_image_upload(start_frame_file, "start")
+            end_public_url, end_info = self._process_image_upload(end_frame_file, "end")
             
-            if not start_base64 or not end_base64:
+            if not start_public_url or not end_public_url:
                 return VideoResult(
                     success=False,
-                    error_message="Failed to process one or both uploaded images"
+                    error_message="Failed to process and upload one or both images to OSS"
                 )
             
             # Build request payload
             request_data = self._build_keyframe_request(
-                first_frame_base64=start_base64,
-                last_frame_base64=end_base64,
+                first_frame_url=start_public_url,
+                last_frame_url=end_public_url,
                 prompt=prompt.strip() if prompt else None,
                 model=model
             )
@@ -180,86 +181,97 @@ class KeyFrameVideoService(BaseVideoService):
     
     def _process_image_upload(self, image_file, frame_type: str) -> Tuple[Optional[str], Optional[dict]]:
         """
-        Process uploaded image and convert to base64.
+        Process uploaded image and upload to OSS to get public URL.
         
         Args:
             image_file: The uploaded image file from Gradio
             frame_type: "start" or "end" for logging purposes
             
         Returns:
-            tuple: (base64_string, image_info) or (None, None) if failed
+            tuple: (public_url, image_info) or (None, None) if failed
         """
         try:
-            # Open and validate the image
+            # Validate image file
+            if image_file is None:
+                logger.error(f"No {frame_type} frame image file provided")
+                return None, None
+            
+            # Get basic image info for validation
             with Image.open(image_file) as img:
-                # Get image info
                 width, height = img.size
-                format = img.format or 'JPEG'
+                original_format = img.format or 'JPEG'
                 file_size_mb = image_file.size / (1024 * 1024) if hasattr(image_file, 'size') else 0
                 
                 # Validate image dimensions and format
-                validation_error = Config.validate_image_upload(file_size_mb, format, width, height)
+                validation_error = Config.validate_image_upload(file_size_mb, original_format, width, height)
                 if validation_error:
-                    logger.error(f"{frame_type.capitalize()} frame validation failed: {validation_error}")
+                    logger.error(f"{frame_type.title()} frame validation failed: {validation_error}")
                     return None, None
+            
+            # Upload to OSS and get public URL
+            public_url, upload_info = oss_service.upload_image(image_file)
+            
+            if public_url:
+                logger.info(f"{frame_type.title()} frame uploaded successfully to OSS: {public_url[:80]}...")
                 
-                # Convert to RGB if needed (for JPEG compatibility)
-                if img.mode in ('RGBA', 'LA', 'P'):
-                    rgb_img = Image.new('RGB', img.size, (255, 255, 255))
-                    if img.mode == 'P':
-                        img = img.convert('RGBA')
-                    rgb_img.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
-                    img = rgb_img
-                
-                # Convert to base64 (just the base64 string, not data URI)
-                import io
-                buffer = io.BytesIO()
-                img.save(buffer, format='JPEG', quality=95)
-                image_bytes = buffer.getvalue()
-                base64_string = base64.b64encode(image_bytes).decode('utf-8')
-                
+                # Combine validation info with upload info
                 image_info = {
-                    "width": width,
-                    "height": height,
-                    "format": format,
+                    "public_url": public_url,
+                    "original_width": width,
+                    "original_height": height,
+                    "original_format": original_format,
                     "file_size_mb": file_size_mb,
-                    "frame_type": frame_type
+                    "frame_type": frame_type,
+                    **upload_info
                 }
                 
-                logger.info(f"{frame_type.capitalize()} frame processed successfully: {width}x{height}, {format}, {file_size_mb:.2f}MB")
-                return base64_string, image_info
+                return public_url, image_info
+            else:
+                logger.error(f"Failed to upload {frame_type} frame to OSS")
+                return None, None
                 
         except Exception as e:
-            logger.error(f"Error processing {frame_type} frame: {str(e)}")
+            logger.error(f"Error processing {frame_type} frame upload: {str(e)}")
             return None, None
     
     def _build_keyframe_request(
         self,
-        first_frame_base64: str,
-        last_frame_base64: str,
+        first_frame_url: str,
+        last_frame_url: str,
         prompt: Optional[str] = None,
         model: str = "wanx2.1-kf2v-plus"
     ) -> dict:
         """
-        Build API request payload for keyframe-to-video generation.
+        Build API request payload for keyframe-to-video generation using public URLs.
         
+        Args:
+            first_frame_url: Public URL of the first frame image
+            last_frame_url: Public URL of the last frame image
+            prompt: Optional text prompt
+            model: Model to use for generation
+            
         Returns:
             dict: Formatted request payload
         """
         request_data = {
             "model": model,
             "input": {
-                "first_frame_url": first_frame_base64,
-                "last_frame_url": last_frame_base64
+                "first_frame_url": first_frame_url,
+                "last_frame_url": last_frame_url
             },
             "parameters": {
-                "resolution": "720P"  # Fixed for keyframe models
+                "resolution": "720P",  # Fixed for keyframe models
+                "prompt_extend": True  # Enable prompt extension for better results
             }
         }
         
         # Add optional prompt
         if prompt and prompt.strip():
             request_data["input"]["prompt"] = prompt.strip()
+        
+        logger.info(f"Using model: {model}, resolution: 720P")
+        logger.info(f"First frame URL: {first_frame_url[:80]}...")
+        logger.info(f"Last frame URL: {last_frame_url[:80]}...")
         
         return request_data
     
@@ -278,14 +290,8 @@ class KeyFrameVideoService(BaseVideoService):
         
         try:
             logger.info(f"Submitting keyframe-to-video task to: {self.base_url}")
-            # Don't log the full request payload as it contains large base64 data
-            log_data = request_data.copy()
-            if 'input' in log_data:
-                if 'first_frame_url' in log_data['input']:
-                    log_data['input']['first_frame_url'] = f"[base64 data: {len(log_data['input']['first_frame_url'])} chars]"
-                if 'last_frame_url' in log_data['input']:
-                    log_data['input']['last_frame_url'] = f"[base64 data: {len(log_data['input']['last_frame_url'])} chars]"
-            logger.info(f"Request payload (truncated): {json.dumps(log_data, indent=2)}")
+            # Log the full request payload since it's now clean (no large base64 data)
+            logger.info(f"Request payload: {json.dumps(request_data, indent=2)}")
             
             response = requests.post(
                 self.base_url,

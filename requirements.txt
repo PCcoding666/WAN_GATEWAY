@@ -1,5 +1,5 @@
 # Essential production dependencies for Gradio Bailian Multi-Modal Video Application
-gradio==5.43.1
+gradio==4.36.1
 requests>=2.28.0
 python-dotenv>=1.0.0
 dashscope>=1.14.0

@@ -1,168 +1,160 @@
-# 📝 Wan Gateway 更新日志
+# 📝 Wan Gateway Changelog
 
-本文件记录了 Wan Gateway 多模态视频生成器的所有重要变更。
+This file records all notable changes to the Wan Gateway multi-modal video generator.
 
-遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范，
-版本号遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) 规范。
+Following [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format,
+and adhering to [Semantic Versioning 2.0.0](https://semver.org/).
 
-## [未发布]
+## [Unreleased]
 
-### 计划功能
-- 支持更多视频格式输出
-- 批量处理功能
-- 用户账户系统
-- 视频历史记录管理
+### Planned Features
+- Support for more video format outputs
+- Batch processing functionality
+- User account system
+- Video history management
 
 ## [1.2.0] - 2024-01-08
 
-### 新增
-- 🆕 **多模态视频生成支持**
-  - 文本生成视频 (Text-to-Video)
-  - 图像生成视频 (Image-to-Video) 
-  - 关键帧生成视频 (Keyframe-to-Video)
-- 🏭 **服务工厂模式** - 统一的服务创建和管理
-- 📱 **增强的 Gradio 界面** - 支持模式切换和动态UI
-- ☁️ **OSS 云存储集成** - 支持阿里云 OSS 图像存储
-- 🔧 **新增模型支持**:
-  - wan2.2-t2v-plus (推荐文本生成视频模型)
-  - wan2.2-i2v-flash (最快图像生成视频模型)
-  - wan2.2-i2v-plus (高质量图像生成视频模型)
-  - wanx2.1-kf2v-plus (关键帧生成视频模型)
-- 📊 **智能轮询策略** - 不同模式使用不同的轮询间隔
-- 🛠️ **完整的部署支持**:
-  - Docker 和 Docker Compose 配置
-  - 生产环境部署脚本
-  - 云端部署指南 (Google Cloud, AWS, 阿里云)
-- 📚 **全面的文档更新**:
-  - 完整的 API 文档
-  - 详细的部署指南
-  - 中英文双语支持
+### Added
+- 🆕 **Multi-modal video generation support**
+  - Text-to-Video generation
+  - Image-to-Video generation
+  - Keyframe-to-Video generation
+- 🏭 **Service factory pattern** - Unified service creation and management
+- 📱 **Enhanced Gradio interface** - Support for mode switching and dynamic UI
+- ☁️ **OSS cloud storage integration** - Support for Alibaba Cloud OSS image storage
+- 🔧 **New model support**:
+  - wan2.2-t2v-plus (recommended text-to-video model)
+  - wan2.2-i2v-flash (fastest image-to-video model)
+  - wan2.2-i2v-plus (high-quality image-to-video model)
+  - wanx2.1-kf2v-plus (keyframe-to-video model)
+- 📊 **Smart polling strategy** - Different polling intervals for different modes
+- 🛠️ **Complete deployment support**:
+  - Docker and Docker Compose configuration
+  - Production environment deployment scripts
+  - Cloud deployment guides (Google Cloud, AWS, Alibaba Cloud)
+- 📚 **Comprehensive documentation updates**:
+  - Complete API documentation
+  - Detailed deployment guide
+  - Bilingual support (English and Chinese)
 
-### 改进
-- ⚡ **性能优化**
-  - 异步处理优化
-  - 更智能的错误重试机制
-  - 资源使用优化
-- 🔒 **安全增强**
-  - 环境变量安全管理
-  - API 密钥验证改进
-  - 文件上传安全检查
-- 🎨 **用户体验改进**
-  - 更直观的界面设计
-  - 实时状态反馈
-  - 详细的错误提示
-- 📦 **代码结构优化**
-  - 模块化设计
-  - 更好的代码组织
-  - 统一的错误处理
+### Improved
+- ⚡ **Performance optimization**
+  - Asynchronous processing optimization
+  - Smarter error retry mechanisms
+  - Resource usage optimization
+- 🔒 **Security enhancements**
+  - Environment variable security management
+  - Improved API key validation
+  - File upload security checks
+- 🎨 **User experience improvements**
+  - More intuitive interface design
+  - Real-time status feedback
+  - Detailed error messages
+- 📦 **Code structure optimization**
+  - Modular design
+  - Better code organization
+  - Unified error handling
 
-### 修复
-- 🐛 修复文件路径处理问题
-- 🐛 解决内存泄漏问题
-- 🐛 修复并发请求处理
-- 🐛 解决配置加载异常
+### Fixed
+- 🐛 Fixed file path handling issues
+- 🐛 Resolved memory leak problems
+- 🐛 Fixed concurrent request processing
+- 🐛 Resolved configuration loading exceptions
 
-### 变更
-- 📝 项目名称从 "Enhanced Multi-Modal Video Generator" 更新为 "Wan Gateway"
-- 🔄 API 端点结构调整
-- 📋 配置文件格式更新
-- 🏷️ 版本号从 1.0.0 升级到 1.2.0
+### Changed
+- 📝 Project name updated from "Enhanced Multi-Modal Video Generator" to "Wan Gateway"
+- 🔄 API endpoint structure adjustments
+- 📋 Configuration file format updates
+- 🏷️ Version number upgraded from 1.0.0 to 1.2.0
 
-### 移除
-- 🗑️ 移除过时的 API 兼容性代码
-- 🗑️ 清理未使用的依赖项
+### Removed
+- 🗑️ Removed outdated API compatibility code
+- 🗑️ Cleaned up unused dependencies
 
 ## [1.1.0] - 2023-12-15
 
-### 新增
-- 🎯 **高级设置支持**
-  - 负面提示 (Negative Prompts)
-  - 种子控制 (Seed Control)
-  - 自定义宽高比
-- 🎨 **更多风格选项**
-  - 电影级 (Cinematic)
-  - 动漫 (Anime) 
-  - 写实 (Realistic)
-  - 抽象 (Abstract)
-  - 纪录片 (Documentary)
-  - 广告 (Commercial)
-- 📊 **状态监控** - 实时生成进度追踪
-- 🔄 **自动重试机制** - 网络错误自动重试
+### Added
+- 🎯 **Advanced settings support**
+  - Negative prompts
+  - Seed control
+  - Custom aspect ratios
+- 🎨 **More style options**
+  - Cinematic, Anime, Realistic, Abstract, Documentary, Commercial
+- 📊 **Status monitoring** - Real-time generation progress tracking
+- 🔄 **Automatic retry mechanism** - Auto-retry for network errors
 
-### 改进
-- ⚡ 生成速度优化 30%
-- 🎨 界面美化和用户体验提升
-- 📝 错误信息更加友好和详细
-- 🔧 配置管理改进
+### Improved
+- ⚡ Generation speed optimized by 30%
+- 🎨 Interface beautification and user experience enhancement
+- 📝 More friendly and detailed error messages
+- 🔧 Configuration management improvements
 
-### 修复
-- 🐛 修复长提示截断问题
-- 🐛 解决网络超时处理
-- 🐛 修复特殊字符编码问题
+### Fixed
+- 🐛 Fixed long prompt truncation issue
+- 🐛 Resolved network timeout handling
+- 🐛 Fixed special character encoding issues
 
 ## [1.0.0] - 2023-11-20
 
-### 新增
-- 🎬 **基础文本生成视频功能**
-  - 支持阿里巴巴百炼 API
-  - 基础 Gradio 网页界面
-  - 简单的提示输入和视频输出
-- ⚙️ **核心配置系统**
-  - 环境变量管理
-  - API 密钥配置
-  - 基础错误处理
-- 🐳 **Docker 支持**
-  - 基础 Dockerfile
-  - Docker Compose 配置
-- 📚 **初始文档**
-  - README 文档
-  - 基础使用说明
-  - 安装指南
+### Added
+- 🎬 **Basic text-to-video functionality**
+  - Support for Alibaba Bailian API
+  - Basic Gradio web interface
+  - Simple prompt input and video output
+- ⚙️ **Core configuration system**
+  - Environment variable management
+  - API key configuration
+  - Basic error handling
+- 🐳 **Docker support**
+  - Basic Dockerfile
+  - Docker Compose configuration
+- 📚 **Initial documentation**
+  - README documentation, Basic usage instructions, Installation guide
 
-### 技术栈
-- Python 3.8+
-- Gradio 4.0+
-- 阿里巴巴 DashScope API
-- Docker
+### Tech Stack
+- Python 3.8+, Gradio 4.0+, Alibaba DashScope API, Docker
 
 ## [0.1.0] - 2023-10-15
 
-### 新增
-- 🏗️ 项目初始化
-- 📋 基础项目结构
-- 🔧 开发环境配置
-- 📄 许可证和基础文档
+### Added
+- 🏗️ Project initialization
+- 📋 Basic project structure
+- 🔧 Development environment configuration
+- 📄 License and basic documentation
 
 ---
 
-## 版本说明
+## Version Notes
 
-### 版本号格式
-- **主版本号**: 重大功能变更或不兼容的 API 修改
-- **次版本号**: 新功能添加，向后兼容
-- **修订版本号**: Bug 修复，向后兼容
+### Version Number Format
+- **Major version**: Major feature changes or incompatible API modifications
+- **Minor version**: New feature additions, backward compatible
+- **Patch version**: Bug fixes, backward compatible
 
-### 变更类型
-- `新增` - 新功能
-- `改进` - 现有功能的增强
-- `修复` - Bug 修复
-- `变更` - 现有功能的修改
-- `移除` - 移除的功能
-- `安全` - 安全相关的修复
+### Change Types
+- `Added` - New features
+- `Improved` - Enhancements to existing features
+- `Fixed` - Bug fixes
+- `Changed` - Modifications to existing features
+- `Removed` - Removed features
+- `Security` - Security-related fixes
 
-### 图标说明
-- 🆕 新功能
-- ⚡ 性能改进
-- 🐛 Bug 修复
-- 🔒 安全更新
-- 📚 文档更新
-- 🎨 界面改进
-- 🔧 配置更改
-- 📦 依赖更新
-- 🗑️ 移除功能
+### Icon Legend
+- 🆕 New features
+- ⚡ Performance improvements
+- 🐛 Bug fixes
+- 🔒 Security updates
+- 📚 Documentation updates
+- 🎨 Interface improvements
+- 🔧 Configuration changes
+- 📦 Dependency updates
+- 🗑️ Removed features
 
 ---
 
-**感谢所有贡献者！** 🎉
+**Thanks to all contributors!** 🎉
 
-如果您发现任何问题或有改进建议，请在 [GitHub Issues](https://github.com/PCcoding666/WAN_GATEWAY/issues) 中提出。
+If you find any issues or have improvement suggestions, please submit them in [GitHub Issues](https://github.com/PCcoding666/WAN_GATEWAY/issues).
+
+For Chinese documentation, see the [doc](doc/) folder.

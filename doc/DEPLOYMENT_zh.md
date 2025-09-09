@@ -1,106 +1,106 @@
-# 🚀 Wan Gateway Deployment Guide
+# 🚀 Wan Gateway 部署指南
 
-This document provides comprehensive deployment instructions for the Wan Gateway multi-modal video generator, including local development, Docker deployment, and cloud deployment.
+这个文档提供了 Wan Gateway 多模态视频生成器的详细部署指南，包括本地开发、Docker 部署和云端部署。
 
-## 📋 Table of Contents
+## 📋 目录
 
-- [Requirements](#requirements)
-- [Local Development Deployment](#local-development-deployment)
-- [Docker Deployment](#docker-deployment)
-- [Cloud Deployment](#cloud-deployment)
-- [Production Environment Configuration](#production-environment-configuration)
-- [Monitoring and Maintenance](#monitoring-and-maintenance)
-- [Troubleshooting](#troubleshooting)
+- [环境要求](#环境要求)
+- [本地开发部署](#本地开发部署)
+- [Docker 部署](#docker-部署)
+- [云端部署](#云端部署)
+- [生产环境配置](#生产环境配置)
+- [监控和维护](#监控和维护)
+- [常见问题解决](#常见问题解决)
 
-## 🔧 Requirements
+## 🔧 环境要求
 
-### Basic Requirements
-- **Python**: 3.13+ (latest version recommended)
-- **Memory**: Minimum 2GB RAM (4GB+ recommended)
-- **Disk Space**: Minimum 5GB available space
-- **Network**: Stable internet connection (for API calls)
+### 基础要求
+- **Python**: 3.13+ (推荐使用最新版本)
+- **内存**: 最少 2GB RAM (推荐 4GB+)
+- **磁盘空间**: 最少 5GB 可用空间
+- **网络**: 稳定的互联网连接 (用于 API 调用)
 
-### API Requirements
-- Valid Alibaba Bailian API key
-- Optional: Alibaba Cloud OSS storage configuration (for image uploads)
+### API 要求
+- 有效的阿里巴巴百炼 API 密钥
+- 可选：阿里云 OSS 存储配置 (用于图像上传)
 
-## 🏠 Local Development Deployment
+## 🏠 本地开发部署
 
-### 1. Project Setup
+### 1. 项目设置
 
 ```bash
-# Clone the project
+# 克隆项目
 git clone https://github.com/PCcoding666/WAN_GATEWAY.git
 cd Wan_Gateway
 
-# Create virtual environment (recommended)
+# 创建虚拟环境 (推荐)
 python -m venv venv
 
-# Activate virtual environment
+# 激活虚拟环境
 # Windows:
 venv\Scripts\activate
 # macOS/Linux:
 source venv/bin/activate
 ```
 
-### 2. Install Dependencies
+### 2. 安装依赖
 
 ```bash
-# Install Python dependencies
+# 安装 Python 依赖
 pip install -r requirements.txt
 
-# Verify installation
+# 验证安装
 python -c "import gradio; print('Gradio version:', gradio.__version__)"
 ```
 
-### 3. Environment Configuration
+### 3. 环境配置
 
 ```bash
-# Copy environment variable template
+# 复制环境变量模板
 cp .env.example .env
 
-# Edit environment variables
-# Use your preferred editor to edit the .env file
+# 编辑环境变量
+# 使用你喜欢的编辑器编辑 .env 文件
 ```
 
-**.env file example**:
+**.env 文件示例**:
 ```bash
-# Required configuration
+# 必需配置
 DASHSCOPE_API_KEY=your_api_key_here
 
-# Optional OSS configuration
+# 可选 OSS 配置
 OSS_ACCESS_KEY_ID=your_oss_access_key_id
 OSS_ACCESS_KEY_SECRET=your_oss_access_key_secret
 OSS_ENDPOINT=https://oss-cn-hangzhou.aliyuncs.com
 OSS_BUCKET_NAME=wan-gateway-images
 
-# Optional application configuration
+# 可选应用配置
 PORT=7860
 HOST=127.0.0.1
 ```
 
-### 4. Run Application
+### 4. 运行应用
 
 ```bash
-# Check environment configuration
+# 检查环境配置
 python main.py --check-env
 
-# Start development server
+# 启动开发服务器
 python main.py
 
-# Or use custom configuration
+# 或者使用自定义配置
 python main.py --host 0.0.0.0 --port 8080 --debug
 ```
 
-## 🐳 Docker Deployment
+## 🐳 Docker 部署
 
-### 1. Basic Docker Deployment
+### 1. 基础 Docker 部署
 
 ```bash
-# Build Docker image
+# 构建 Docker 镜像
 docker build -t wan-gateway .
 
-# Run container
+# 运行容器
 docker run -d \
   --name wan-gateway \
   -p 7860:7860 \
@@ -108,29 +108,29 @@ docker run -d \
   wan-gateway
 ```
 
-### 2. Using Docker Compose
+### 2. 使用 Docker Compose
 
-**docker-compose.yml** is included in the project:
+**docker-compose.yml** 已包含在项目中:
 
 ```bash
-# Start services
+# 启动服务
 docker-compose up -d
 
-# View logs
+# 查看日志
 docker-compose logs -f
 
-# Stop services
+# 停止服务
 docker-compose down
 ```
 
-### 3. Production-Grade Docker Deployment
+### 3. 生产级 Docker 部署
 
 ```bash
-# Use production deployment script
+# 使用生产部署脚本
 chmod +x deploy-production.sh
 ./deploy-production.sh
 
-# Or manually run production-grade container
+# 或者手动运行生产级容器
 docker run -d \
   --name wan-gateway-prod \
   -p 80:7860 \
@@ -144,16 +144,16 @@ docker run -d \
   wan-gateway:latest
 ```
 
-## ☁️ Cloud Deployment
+## ☁️ 云端部署
 
 ### 1. Google Cloud Platform
 
 ```bash
-# Use provided deployment script
+# 使用提供的部署脚本
 chmod +x deploy-to-cloud.sh
 ./deploy-to-cloud.sh
 
-# Or manually deploy with Cloud Run
+# 或者使用 Cloud Run 手动部署
 gcloud run deploy wan-gateway \
   --image gcr.io/your-project/wan-gateway \
   --platform managed \
@@ -162,16 +162,16 @@ gcloud run deploy wan-gateway \
   --set-env-vars DASHSCOPE_API_KEY=your_api_key
 ```
 
-### 2. Alibaba Cloud ECS
+### 2. 阿里云 ECS
 
 ```bash
-# On ECS instance
-# 1. Install Docker
+# 在 ECS 实例上
+# 1. 安装 Docker
 sudo yum install -y docker
 sudo systemctl start docker
 sudo systemctl enable docker
 
-# 2. Pull and run image
+# 2. 拉取和运行镜像
 sudo docker pull your-registry/wan-gateway:latest
 sudo docker run -d \
   --name wan-gateway \
@@ -183,7 +183,7 @@ sudo docker run -d \
 
 ### 3. AWS ECS
 
-Deploy using AWS ECS task definition:
+使用 AWS ECS 任务定义部署:
 
 ```json
 {
@@ -214,23 +214,23 @@ Deploy using AWS ECS task definition:
 }
 ```
 
-## 🔒 Production Environment Configuration
+## 🔒 生产环境配置
 
-### 1. Security Configuration
+### 1. 安全配置
 
 ```bash
-# Use environment variables instead of .env files
+# 使用环境变量而不是 .env 文件
 export DASHSCOPE_API_KEY="your_secure_api_key"
 export OSS_ACCESS_KEY_ID="your_secure_oss_key"
 export OSS_ACCESS_KEY_SECRET="your_secure_oss_secret"
 
-# Configure firewall (if needed)
+# 配置防火墙 (如果需要)
 sudo ufw allow 80
 sudo ufw allow 443
 sudo ufw enable
 ```
 
-### 2. Reverse Proxy Configuration (Nginx)
+### 2. 反向代理配置 (Nginx)
 
 **nginx.conf**:
 ```nginx
@@ -245,12 +245,12 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         
-        # WebSocket support
+        # WebSocket 支持
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         
-        # Timeout settings
+        # 超时设置
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
@@ -258,33 +258,33 @@ server {
 }
 ```
 
-### 3. SSL Configuration
+### 3. SSL 配置
 
 ```bash
-# Use Let's Encrypt
+# 使用 Let's Encrypt
 sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d your-domain.com
 ```
 
-## 📊 Monitoring and Maintenance
+## 📊 监控和维护
 
-### 1. Health Checks
+### 1. 健康检查
 
 ```bash
-# Check application status
+# 检查应用状态
 curl http://localhost:7860/
 
-# Check environment configuration
+# 检查环境配置
 docker exec wan-gateway python main.py --check-env
 
-# View container logs
+# 查看容器日志
 docker logs wan-gateway
 ```
 
-### 2. Log Management
+### 2. 日志管理
 
 ```bash
-# Configure log rotation
+# 配置日志轮转
 sudo tee /etc/logrotate.d/wan-gateway <<EOF
 /var/log/wan-gateway/*.log {
     daily
@@ -297,44 +297,44 @@ sudo tee /etc/logrotate.d/wan-gateway <<EOF
 EOF
 ```
 
-### 3. Performance Monitoring
+### 3. 性能监控
 
 ```bash
-# Monitor resource usage
+# 监控资源使用
 docker stats wan-gateway
 
-# Monitor application performance
-# Can integrate Prometheus/Grafana or other monitoring tools
+# 监控应用性能
+# 可以集成 Prometheus/Grafana 或其他监控工具
 ```
 
-## ❌ Troubleshooting
+## ❌ 常见问题解决
 
-### 1. Port Conflicts
+### 1. 端口冲突
 
 ```bash
-# Find process using port
+# 查找占用端口的进程
 lsof -i :7860
-# or
+# 或者
 netstat -tlnp | grep :7860
 
-# Use different port
+# 使用不同端口
 python main.py --port 8080
 ```
 
-### 2. Memory Issues
+### 2. 内存不足
 
 ```bash
-# Add swap space
+# 增加 swap 空间
 sudo fallocate -l 2G /swapfile
 sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
 ```
 
-### 3. API Connection Issues
+### 3. API 连接问题
 
 ```bash
-# Test API connection
+# 测试 API 连接
 python -c "
 import requests
 import os
@@ -345,22 +345,22 @@ print(f'API Key configured: {bool(api_key)}')
 "
 ```
 
-### 4. Docker Related Issues
+### 4. Docker 相关问题
 
 ```bash
-# Clean up Docker resources
+# 清理 Docker 资源
 docker system prune -a
 
-# Rebuild image
+# 重新构建镜像
 docker build --no-cache -t wan-gateway .
 
-# Check container status
+# 检查容器状态
 docker inspect wan-gateway
 ```
 
-## 🚀 Automated Deployment
+## 🚀 自动化部署
 
-### CI/CD Pipeline Example (GitHub Actions)
+### CI/CD 流水线示例 (GitHub Actions)
 
 **.github/workflows/deploy.yml**:
 ```yaml
@@ -382,33 +382,31 @@ jobs:
     
     - name: Deploy to server
       run: |
-        # Add your deployment logic here
-        # e.g., push to container registry, then deploy to server
+        # 这里添加你的部署逻辑
+        # 例如推送到容器注册表，然后部署到服务器
         echo "Deploying to production..."
 ```
 
-## 📝 Maintenance Checklist
+## 📝 维护清单
 
-### Daily Maintenance
-- [ ] Check application logs
-- [ ] Monitor resource usage
-- [ ] Verify API key status
-- [ ] Check disk space
+### 日常维护
+- [ ] 检查应用日志
+- [ ] 监控资源使用情况
+- [ ] 验证 API 密钥状态
+- [ ] 检查磁盘空间
 
-### Periodic Maintenance
-- [ ] Update dependencies
-- [ ] Backup configuration files
-- [ ] Performance optimization analysis
-- [ ] Security update checks
+### 周期性维护
+- [ ] 更新依赖包
+- [ ] 备份配置文件
+- [ ] 性能优化分析
+- [ ] 安全更新检查
 
-### Emergency Response
-- [ ] Prepare rollback plan
-- [ ] Backup API keys
-- [ ] Set up monitoring alerts
-- [ ] Disaster recovery procedures
+### 紧急情况处理
+- [ ] 准备回滚计划
+- [ ] 备用 API 密钥
+- [ ] 监控报警设置
+- [ ] 故障恢复流程
 
 ---
 
-**Need help?** Please refer to the [main documentation](README.md) or submit an issue to the project repository.
-
-For Chinese documentation, see the [doc](doc/) folder.
+**需要帮助？** 请查看 [主要文档](README.md) 或者提交 Issue 到项目仓库。

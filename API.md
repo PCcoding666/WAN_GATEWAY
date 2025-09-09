@@ -1,295 +1,295 @@
-# 📡 Wan Gateway API 文档
+# 📡 Wan Gateway API Documentation
 
-本文档详细说明了 Wan Gateway 多模态视频生成器的 API 接口、数据模型和集成指南。
+This document provides detailed information about the API interfaces, data models, and integration guidelines for the Wan Gateway multi-modal video generator.
 
-## 📋 目录
+## 📋 Table of Contents
 
-- [概述](#概述)
-- [认证](#认证)
-- [核心服务](#核心服务)
-- [数据模型](#数据模型)
-- [错误处理](#错误处理)
-- [使用示例](#使用示例)
-- [最佳实践](#最佳实践)
+- [Overview](#overview)
+- [Authentication](#authentication)
+- [Core Services](#core-services)
+- [Data Models](#data-models)
+- [Error Handling](#error-handling)
+- [Usage Examples](#usage-examples)
+- [Best Practices](#best-practices)
 
-## 🔍 概述
+## 🔍 Overview
 
-Wan Gateway 提供了三种主要的视频生成服务：
+Wan Gateway provides three main video generation services:
 
-1. **文本生成视频** (`TextToVideoService`)
-2. **图像生成视频** (`ImageToVideoService`) 
-3. **关键帧生成视频** (`KeyFrameVideoService`)
+1. **Text-to-Video** (`TextToVideoService`)
+2. **Image-to-Video** (`ImageToVideoService`) 
+3. **Keyframe-to-Video** (`KeyFrameVideoService`)
 
-所有服务都通过统一的工厂模式 (`VideoServiceFactory`) 和多模态应用 (`MultiModalVideoApp`) 进行管理。
+All services are managed through a unified factory pattern (`VideoServiceFactory`) and multi-modal application (`MultiModalVideoApp`).
 
-## 🔐 认证
+## 🔐 Authentication
 
-### API 密钥配置
+### API Key Configuration
 
 ```python
 from src.config import Config
 
-# API 密钥通过环境变量配置
+# API key configured through environment variables
 DASHSCOPE_API_KEY = "your_api_key_here"
 
-# 可选 OSS 配置
+# Optional OSS configuration
 OSS_ACCESS_KEY_ID = "your_oss_key_id"
 OSS_ACCESS_KEY_SECRET = "your_oss_secret"
 ```
 
-### 服务初始化
+### Service Initialization
 
 ```python
 from src.video_service_factory import MultiModalVideoApp
 
-# 使用默认配置
+# Use default configuration
 app = MultiModalVideoApp()
 
-# 或指定 API 密钥
+# Or specify API key
 app = MultiModalVideoApp(api_key="your_api_key")
 ```
 
-## ⚙️ 核心服务
+## ⚙️ Core Services
 
 ### 1. VideoServiceFactory
 
-服务工厂负责根据模式创建相应的服务实例。
+The service factory is responsible for creating appropriate service instances based on mode.
 
 ```python
 from src.video_service_factory import VideoServiceFactory
 
-# 获取支持的模式
+# Get supported modes
 modes = VideoServiceFactory.get_supported_modes()
-# 返回: ["text_to_video", "image_to_video", "keyframe_to_video"]
+# Returns: ["text_to_video", "image_to_video", "keyframe_to_video"]
 
-# 创建特定服务
+# Create specific service
 service = VideoServiceFactory.create_service("text_to_video", api_key)
 
-# 获取模式描述
+# Get mode description
 description = VideoServiceFactory.get_mode_description("text_to_video")
 
-# 获取可用模型
+# Get available models
 models = VideoServiceFactory.get_mode_models("text_to_video")
 
-# 获取默认模型
+# Get default model
 default_model = VideoServiceFactory.get_default_model("text_to_video")
 
-# 验证模式和模型兼容性
+# Validate mode and model compatibility
 error = VideoServiceFactory.validate_mode_and_model("text_to_video", "wan2.2-t2v-plus")
 ```
 
 ### 2. MultiModalVideoApp
 
-多模态应用程序提供了统一的接口来处理所有类型的视频生成。
+The multi-modal application provides a unified interface for handling all types of video generation.
 
 ```python
 from src.video_service_factory import MultiModalVideoApp
 
 app = MultiModalVideoApp()
 
-# 生成视频 - 文本模式
+# Generate video - text mode
 result = app.generate_video(
     mode="text_to_video",
-    prompt="一个美丽的日落景象",
+    prompt="A beautiful sunset scene",
     style="Cinematic",
     aspect_ratio="16:9",
     model="wan2.2-t2v-plus",
-    negative_prompt="模糊，低质量",
+    negative_prompt="blurry, low quality",
     seed=42
 )
 
-# 生成视频 - 图像模式
+# Generate video - image mode
 result = app.generate_video(
     mode="image_to_video",
     image_file="/path/to/image.jpg",
-    prompt="添加缓慢的云朵移动",
+    prompt="Add slow cloud movement",
     style="Realistic"
 )
 
-# 生成视频 - 关键帧模式
+# Generate video - keyframe mode
 result = app.generate_video(
     mode="keyframe_to_video",
     start_frame_file="/path/to/start.jpg",
     end_frame_file="/path/to/end.jpg",
-    prompt="平滑的变换过程"
+    prompt="Smooth transformation process"
 )
 
-# 获取服务状态
+# Get service status
 status = app.get_service_status()
 ```
 
 ### 3. TextToVideoService
 
-文本生成视频服务的详细 API。
+Detailed API for text-to-video generation service.
 
 ```python
 from src.text_to_video_service import TextToVideoService
 
 service = TextToVideoService(api_key="your_api_key")
 
-# 生成视频
+# Generate video
 result = service.generate_video(
-    prompt="壮观的山脉日出",
-    style="Cinematic",           # 可选风格
-    aspect_ratio="16:9",         # 宽高比
-    model="wan2.2-t2v-plus",    # 模型选择
-    negative_prompt="模糊",       # 负面提示
-    seed=12345                   # 随机种子
+    prompt="Spectacular mountain sunrise",
+    style="Cinematic",           # Optional style
+    aspect_ratio="16:9",         # Aspect ratio
+    model="wan2.2-t2v-plus",    # Model selection
+    negative_prompt="blurry",    # Negative prompt
+    seed=12345                   # Random seed
 )
 
-# 处理结果
+# Handle result
 if result.success:
-    print(f"视频URL: {result.video_url}")
-    print(f"本地路径: {result.local_video_path}")
-    print(f"生成时间: {result.generation_time}秒")
+    print(f"Video URL: {result.video_url}")
+    print(f"Local path: {result.local_video_path}")
+    print(f"Generation time: {result.generation_time} seconds")
 else:
-    print(f"生成失败: {result.error_message}")
+    print(f"Generation failed: {result.error_message}")
 ```
 
 ### 4. ImageToVideoService
 
-图像生成视频服务的 API。
+API for image-to-video generation service.
 
 ```python
 from src.image_to_video_service import ImageToVideoService
 
 service = ImageToVideoService(api_key="your_api_key")
 
-# 生成视频
+# Generate video
 result = service.generate_video(
-    image_file="/path/to/input.jpg",  # 输入图像路径
-    prompt="让花朵在风中摆动",          # 可选指导提示
-    style="Realistic",                # 风格选择
-    model="wan2.2-i2v-plus"          # 模型选择
+    image_file="/path/to/input.jpg",  # Input image path
+    prompt="Make flowers sway in wind",  # Optional guidance prompt
+    style="Realistic",                # Style selection
+    model="wan2.2-i2v-plus"          # Model selection
 )
 ```
 
 ### 5. KeyFrameVideoService
 
-关键帧生成视频服务的 API。
+API for keyframe-to-video generation service.
 
 ```python
 from src.keyframe_to_video_service import KeyFrameVideoService
 
 service = KeyFrameVideoService(api_key="your_api_key")
 
-# 生成视频
+# Generate video
 result = service.generate_video(
-    start_frame_file="/path/to/start.jpg",  # 起始帧
-    end_frame_file="/path/to/end.jpg",      # 结束帧
-    prompt="缓慢而自然的过渡",               # 过渡指导
-    style="Cinematic",                      # 风格
-    model="wanx2.1-kf2v-plus"              # 模型
+    start_frame_file="/path/to/start.jpg",  # Start frame
+    end_frame_file="/path/to/end.jpg",      # End frame
+    prompt="Slow and natural transition",   # Transition guidance
+    style="Cinematic",                      # Style
+    model="wanx2.1-kf2v-plus"              # Model
 )
 ```
 
-## 📊 数据模型
+## 📊 Data Models
 
 ### VideoResult
 
-所有视频生成服务返回的结果对象：
+Result object returned by all video generation services:
 
 ```python
 @dataclass
 class VideoResult:
-    success: bool                    # 生成是否成功
-    video_url: Optional[str]         # 生成的视频 URL
-    local_video_path: Optional[str]  # 本地视频文件路径
-    task_id: Optional[str]          # 任务 ID
-    error_message: Optional[str]    # 错误信息
-    generation_time: Optional[float] # 生成耗时（秒）
+    success: bool                    # Whether generation was successful
+    video_url: Optional[str]         # Generated video URL
+    local_video_path: Optional[str]  # Local video file path
+    task_id: Optional[str]          # Task ID
+    error_message: Optional[str]    # Error message
+    generation_time: Optional[float] # Generation time (seconds)
     
-    # 可选的元数据
-    model_used: Optional[str]       # 使用的模型
-    style_used: Optional[str]       # 使用的风格
-    aspect_ratio: Optional[str]     # 宽高比
+    # Optional metadata
+    model_used: Optional[str]       # Model used
+    style_used: Optional[str]       # Style used
+    aspect_ratio: Optional[str]     # Aspect ratio
 ```
 
-### 配置模型
+### Configuration Models
 
 ```python
-# 风格选项
+# Style options
 STYLE_OPTIONS = [
-    "<auto>",       # 自动
-    "Cinematic",    # 电影级
-    "Anime",        # 动漫
-    "Realistic",    # 写实
-    "Abstract",     # 抽象
-    "Documentary",  # 纪录片
-    "Commercial"    # 广告
+    "<auto>",       # Auto
+    "Cinematic",    # Cinematic
+    "Anime",        # Anime
+    "Realistic",    # Realistic
+    "Abstract",     # Abstract
+    "Documentary",  # Documentary
+    "Commercial"    # Commercial
 ]
 
-# 宽高比选项
+# Aspect ratio options
 ASPECT_RATIO_OPTIONS = ["16:9", "1:1", "9:16"]
 
-# 可用模型
+# Available models
 MODEL_OPTIONS = {
     "wan2.2-t2v-plus": {
         "name": "wan2.2-t2v-plus",
-        "description": "最新模型，增强细节和运动稳定性",
+        "description": "Latest model with enhanced detail and motion stability",
         "resolutions": ["480P", "1080P"],
         "api_type": "text_to_video"
     },
     "wan2.2-i2v-plus": {
         "name": "wan2.2-i2v-plus", 
-        "description": "最新图像生成视频模型",
+        "description": "Latest image-to-video model",
         "resolutions": ["480P", "1080P"],
         "api_type": "image_to_video"
     }
-    # ... 更多模型
+    # ... more models
 }
 ```
 
-## ❌ 错误处理
+## ❌ Error Handling
 
-### 常见错误类型
+### Common Error Types
 
 ```python
-# 配置错误
+# Configuration errors
 class ConfigurationError(Exception):
-    """配置相关错误"""
+    """Configuration-related errors"""
     pass
 
-# API 错误
+# API errors
 class APIError(Exception):
-    """API 调用错误"""
+    """API call errors"""
     pass
 
-# 超时错误
+# Timeout errors
 class TimeoutError(Exception):
-    """请求超时错误"""
+    """Request timeout errors"""
     pass
 
-# 文件错误
+# File errors
 class FileProcessingError(Exception):
-    """文件处理错误"""
+    """File processing errors"""
     pass
 ```
 
-### 错误处理示例
+### Error Handling Example
 
 ```python
 try:
     result = app.generate_video(
         mode="text_to_video",
-        prompt="测试提示"
+        prompt="Test prompt"
     )
     if not result.success:
-        print(f"生成失败: {result.error_message}")
+        print(f"Generation failed: {result.error_message}")
         
 except ConfigurationError as e:
-    print(f"配置错误: {e}")
+    print(f"Configuration error: {e}")
 except APIError as e:
-    print(f"API错误: {e}")
+    print(f"API error: {e}")
 except TimeoutError as e:
-    print(f"超时错误: {e}")
+    print(f"Timeout error: {e}")
 except Exception as e:
-    print(f"未知错误: {e}")
+    print(f"Unknown error: {e}")
 ```
 
-## 💡 使用示例
+## 💡 Usage Examples
 
-### 基本文本生成视频
+### Basic Text-to-Video Generation
 
 ```python
 from src.video_service_factory import MultiModalVideoApp
@@ -299,21 +299,21 @@ def generate_simple_video():
     
     result = app.generate_video(
         mode="text_to_video",
-        prompt="一只可爱的小猫在花园中玩耍"
+        prompt="A cute kitten playing in a garden"
     )
     
     if result.success:
-        print(f"✅ 视频生成成功！")
-        print(f"📹 视频URL: {result.video_url}")
+        print(f"✅ Video generated successfully!")
+        print(f"📹 Video URL: {result.video_url}")
         if result.local_video_path:
-            print(f"📁 本地路径: {result.local_video_path}")
+            print(f"📁 Local path: {result.local_video_path}")
     else:
-        print(f"❌ 生成失败: {result.error_message}")
+        print(f"❌ Generation failed: {result.error_message}")
 
 generate_simple_video()
 ```
 
-### 高级配置生成
+### Advanced Configuration Generation
 
 ```python
 def generate_advanced_video():
@@ -321,18 +321,18 @@ def generate_advanced_video():
     
     result = app.generate_video(
         mode="text_to_video",
-        prompt="科幻城市的未来景象，霓虹灯闪烁",
+        prompt="Futuristic cityscape with neon lights flashing",
         style="Cinematic",
         aspect_ratio="16:9", 
         model="wan2.2-t2v-plus",
-        negative_prompt="模糊，噪点，低质量",
-        seed=42  # 保证可重现性
+        negative_prompt="blurry, noise, low quality",
+        seed=42  # Ensure reproducibility
     )
     
     return result
 ```
 
-### 图像生成视频
+### Image-to-Video Generation
 
 ```python
 def image_to_video_example():
@@ -341,14 +341,14 @@ def image_to_video_example():
     result = app.generate_video(
         mode="image_to_video",
         image_file="/path/to/beautiful_landscape.jpg",
-        prompt="添加缓慢移动的云彩和微风吹过的草地",
+        prompt="Add slowly moving clouds and grass swaying in breeze",
         style="Realistic"
     )
     
     return result
 ```
 
-### 关键帧生成视频
+### Keyframe-to-Video Generation
 
 ```python
 def keyframe_to_video_example():
@@ -358,23 +358,23 @@ def keyframe_to_video_example():
         mode="keyframe_to_video", 
         start_frame_file="/path/to/day_scene.jpg",
         end_frame_file="/path/to/night_scene.jpg",
-        prompt="从白天到夜晚的自然过渡"
+        prompt="Natural transition from day to night"
     )
     
     return result
 ```
 
-### 批量生成
+### Batch Generation
 
 ```python
 def batch_generation():
     app = MultiModalVideoApp()
     
     prompts = [
-        "春天的樱花飘落",
-        "夏日的海滩波浪",
-        "秋天的落叶纷飞",
-        "冬日的雪花飞舞"
+        "Cherry blossoms falling in spring",
+        "Ocean waves on a summer beach",
+        "Autumn leaves falling gently",
+        "Snowflakes dancing in winter"
     ]
     
     results = []
@@ -387,31 +387,31 @@ def batch_generation():
         results.append(result)
         
         if result.success:
-            print(f"✅ '{prompt}' 生成成功")
+            print(f"✅ '{prompt}' generated successfully")
         else:
-            print(f"❌ '{prompt}' 生成失败: {result.error_message}")
+            print(f"❌ '{prompt}' generation failed: {result.error_message}")
     
     return results
 ```
 
-## 🎯 最佳实践
+## 🎯 Best Practices
 
-### 1. 性能优化
+### 1. Performance Optimization
 
 ```python
-# 使用合适的轮询间隔
-# 文本生成：2秒间隔
-# 图像/关键帧生成：30秒间隔
+# Use appropriate polling intervals
+# Text generation: 2-second intervals
+# Image/keyframe generation: 30-second intervals
 
-# 设置合理的超时时间
-# 文本生成：5分钟
-# 图像/关键帧生成：15分钟
+# Set reasonable timeouts
+# Text generation: 5 minutes
+# Image/keyframe generation: 15 minutes
 
-# 复用服务实例
-app = MultiModalVideoApp()  # 创建一次，多次使用
+# Reuse service instances
+app = MultiModalVideoApp()  # Create once, use multiple times
 ```
 
-### 2. 错误重试机制
+### 2. Error Retry Mechanism
 
 ```python
 import time
@@ -424,7 +424,7 @@ def generate_with_retry(app, max_retries=3, **kwargs):
             if result.success:
                 return result
             
-            # 如果是API错误，等待后重试
+            # If API error, wait and retry
             if "rate limit" in result.error_message.lower():
                 wait_time = (2 ** attempt) + random.uniform(0, 1)
                 time.sleep(wait_time)
@@ -438,38 +438,38 @@ def generate_with_retry(app, max_retries=3, **kwargs):
     return None
 ```
 
-### 3. 资源管理
+### 3. Resource Management
 
 ```python
 def safe_generation(app, **kwargs):
     try:
-        # 检查API配额
+        # Check API quota
         status = app.get_service_status()
         if not status['api_configured']:
-            raise ConfigurationError("API未正确配置")
+            raise ConfigurationError("API not properly configured")
         
-        # 生成视频
+        # Generate video
         result = app.generate_video(**kwargs)
         
-        # 清理临时文件
+        # Clean up temporary files
         if result.success and result.local_video_path:
-            # 处理完成后可以选择删除本地文件
+            # Can optionally delete local files after processing
             # os.remove(result.local_video_path)
             pass
             
         return result
         
     except Exception as e:
-        logger.error(f"视频生成失败: {e}")
+        logger.error(f"Video generation failed: {e}")
         raise
 ```
 
-### 4. 日志记录
+### 4. Logging
 
 ```python
 import logging
 
-# 配置日志
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -478,27 +478,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def logged_generation(app, **kwargs):
-    logger.info(f"开始视频生成: {kwargs}")
+    logger.info(f"Starting video generation: {kwargs}")
     
     start_time = time.time()
     result = app.generate_video(**kwargs)
     end_time = time.time()
     
     if result.success:
-        logger.info(f"视频生成成功，耗时: {end_time - start_time:.2f}秒")
+        logger.info(f"Video generation successful, took: {end_time - start_time:.2f} seconds")
     else:
-        logger.error(f"视频生成失败: {result.error_message}")
+        logger.error(f"Video generation failed: {result.error_message}")
     
     return result
 ```
 
-## 📚 更多资源
+## 📚 Additional Resources
 
-- [主要文档](README.md) - 项目概述和快速开始
-- [部署指南](DEPLOYMENT.md) - 详细的部署说明
-- [配置文档](src/config.py) - 完整的配置选项
-- [示例代码](demo.py) - 功能演示脚本
+- [Main Documentation](README.md) - Project overview and quick start
+- [Deployment Guide](DEPLOYMENT.md) - Detailed deployment instructions
+- [Configuration Documentation](src/config.py) - Complete configuration options
+- [Example Code](demo.py) - Feature demonstration script
+For Chinese documentation, see the [doc](doc/) folder.
 
 ---
 
-**需要帮助？** 请查看项目的 Issues 页面或提交新的问题。
+**Need help?** Please check the project's Issues page or submit a new issue.

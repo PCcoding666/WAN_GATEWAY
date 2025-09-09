@@ -1,3 +1,5 @@
+[查看中文文档](doc/README_zh.md)
+
 # 🎬 Wan Gateway - Multi-Modal Video Generator
 
 A comprehensive web application built with Gradio that provides an intuitive interface for generating videos using Alibaba's Bailian APIs. Supports three generation modes: text-to-video, image-to-video, and keyframe-to-video generation.

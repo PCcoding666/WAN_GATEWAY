@@ -1,3 +1,5 @@
+[查看中文文档](API_zh.md)
+
 # 📡 Wan Gateway API Documentation
 
 This document provides detailed information about the API interfaces, data models, and integration guidelines for the Wan Gateway multi-modal video generator.

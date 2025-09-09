@@ -1,3 +1,5 @@
+[查看中文文档](DEPLOYMENT_zh.md)
+
 # 🚀 Wan Gateway Deployment Guide
 
 This document provides comprehensive deployment instructions for the Wan Gateway multi-modal video generator, including local development, Docker deployment, and cloud deployment.

@@ -1,3 +1,5 @@
+[查看中文文档](CONTRIBUTING_zh.md)
+
 # 🤝 Contributing Guide
 
 Thank you for your interest in the Wan Gateway project! We welcome all forms of contributions, including code contributions, documentation improvements, issue reporting, and feature suggestions.

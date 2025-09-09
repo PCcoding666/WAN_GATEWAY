@@ -1,3 +1,5 @@
+[查看中文文档](CHANGELOG_zh.md)
+
 # 📝 Wan Gateway Changelog
 
 This file records all notable changes to the Wan Gateway multi-modal video generator.

@@ -34,10 +34,16 @@ class EnhancedGradioVideoApp:
         text_aspect_ratio: str,
         text_negative_prompt: str,
         text_seed: str,
+        text_duration: int,
+        text_audio_enabled: bool,
+        text_audio_url: str,
         # Image-to-Video inputs
         image_file,
         image_prompt: str,
         image_style: str,
+        image_duration: int,
+        image_audio_enabled: bool,
+        image_audio_url: str,
         # Keyframe-to-Video inputs
         start_frame_file,
         end_frame_file,
@@ -69,6 +75,9 @@ class EnhancedGradioVideoApp:
                 # Process negative prompt
                 neg_prompt = text_negative_prompt.strip() if text_negative_prompt else None
                 
+                # Process audio URL
+                audio_url = text_audio_url.strip() if text_audio_url and text_audio_url.strip() else None
+                
                 result: VideoResult = self.app.generate_video(
                     mode="text_to_video",
                     prompt=text_prompt,
@@ -76,18 +85,27 @@ class EnhancedGradioVideoApp:
                     style=Config.get_style_value_from_display(text_style),
                     aspect_ratio=text_aspect_ratio,
                     negative_prompt=neg_prompt,
-                    seed=seed_int
+                    seed=seed_int,
+                    duration=text_duration,
+                    audio_enabled=text_audio_enabled,
+                    audio_url=audio_url
                 )
                 
             elif mode == "Image-to-Video":
                 if image_file is None:
                     return None, "❌ Please upload an image for video generation."
                 
+                # Process audio URL
+                audio_url = image_audio_url.strip() if image_audio_url and image_audio_url.strip() else None
+                
                 result: VideoResult = self.app.generate_video(
                     mode="image_to_video",
                     image_file=image_file,
                     prompt=image_prompt or "",
-                    style=Config.get_style_value_from_display(image_style)
+                    style=Config.get_style_value_from_display(image_style),
+                    duration=image_duration,
+                    audio_enabled=image_audio_enabled,
+                    audio_url=audio_url
                 )
                 
             elif mode == "Keyframe-to-Video":
@@ -199,6 +217,26 @@ class EnhancedGradioVideoApp:
                             label="Seed (Optional)",
                             placeholder="Random seed for reproducibility"
                         )
+                with gr.Row():
+                    with gr.Column():
+                        text_duration = gr.Radio(
+                            label="⏱️ Video Duration (Wan 2.5 Only)",
+                            choices=[5, 10],
+                            value=5,
+                            info="Duration in seconds"
+                        )
+                    with gr.Column():
+                        text_audio_enabled = gr.Checkbox(
+                            label="🎵 Enable Audio Generation (Wan 2.5 Only)",
+                            value=True,
+                            info="Automatically generate synchronized audio"
+                        )
+                with gr.Row():
+                    text_audio_url = gr.Textbox(
+                        label="🎧 Custom Audio URL (Optional, Wan 2.5 Only)",
+                        placeholder="https://example.com/audio.mp3",
+                        info="Provide a custom audio file URL"
+                    )
             
             # Image-to-Video inputs
             with gr.Group(visible=False) as image_group:
@@ -222,6 +260,26 @@ class EnhancedGradioVideoApp:
                             choices=style_choices,
                             value=style_choices[0] if style_choices else "Auto"
                         )
+                with gr.Row():
+                    with gr.Column():
+                        image_duration = gr.Radio(
+                            label="⏱️ Video Duration (Wan 2.5 Only)",
+                            choices=[5, 10],
+                            value=5,
+                            info="Duration in seconds"
+                        )
+                    with gr.Column():
+                        image_audio_enabled = gr.Checkbox(
+                            label="🎵 Enable Audio Generation (Wan 2.5 Only)",
+                            value=True,
+                            info="Automatically generate synchronized audio"
+                        )
+                with gr.Row():
+                    image_audio_url = gr.Textbox(
+                        label="🎧 Custom Audio URL (Optional, Wan 2.5 Only)",
+                        placeholder="https://example.com/audio.mp3",
+                        info="Provide a custom audio file URL"
+                    )
             
             # Keyframe-to-Video inputs
             with gr.Group(visible=False) as keyframe_group:
@@ -282,8 +340,10 @@ class EnhancedGradioVideoApp:
                     # Text-to-Video inputs
                     text_prompt, text_model, text_style, text_aspect_ratio, 
                     text_negative_prompt, text_seed,
+                    text_duration, text_audio_enabled, text_audio_url,
                     # Image-to-Video inputs
                     image_file, image_prompt, image_style,
+                    image_duration, image_audio_enabled, image_audio_url,
                     # Keyframe-to-Video inputs
                     start_frame_file, end_frame_file, keyframe_prompt, keyframe_style
                 ],

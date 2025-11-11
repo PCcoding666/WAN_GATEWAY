@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "ask": [
+      "Read(!/Users/chengpeng/Documents/Wan_Gateway/**)",
+      "Edit(!/Users/chengpeng/Documents/Wan_Gateway/**)"
+    ],
+    "allow": [
+      "Read(/Users/chengpeng/Documents/Wan_Gateway/**)",
+      "Edit(/Users/chengpeng/Documents/Wan_Gateway/**)"
+    ]
+  },
+  "memoryImport": {},
+  "monitoring": {}
+}

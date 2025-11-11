@@ -115,7 +115,8 @@ class VideoServiceFactory:
         if mode == "text_to_video":
             return Config.DEFAULT_MODEL if Config.DEFAULT_MODEL in models else models[0]
         elif mode == "image_to_video":
-            return "wan2.2-i2v-plus" if "wan2.2-i2v-plus" in models else models[0]
+            # Prefer Wan 2.5 model for image-to-video
+            return Config.DEFAULT_IMAGE_TO_VIDEO_MODEL if Config.DEFAULT_IMAGE_TO_VIDEO_MODEL in models else models[0]
         else:
             # For keyframe modes, return the keyframe model
             return "wanx2.1-kf2v-plus" if "wanx2.1-kf2v-plus" in models else models[0]
@@ -188,14 +189,20 @@ class MultiModalVideoApp:
                 aspect_ratio=kwargs.get('aspect_ratio', Config.DEFAULT_ASPECT_RATIO),
                 model=kwargs.get('model', VideoServiceFactory.get_default_model(mode)),
                 negative_prompt=kwargs.get('negative_prompt'),
-                seed=kwargs.get('seed')
+                seed=kwargs.get('seed'),
+                duration=kwargs.get('duration', Config.DEFAULT_DURATION),
+                audio_enabled=kwargs.get('audio_enabled', Config.DEFAULT_AUDIO_ENABLED),
+                audio_url=kwargs.get('audio_url')
             )
         elif mode == "image_to_video":
             return self.current_service.generate_video(
                 image_file=kwargs.get('image_file'),
                 prompt=kwargs.get('prompt', ''),
                 style=kwargs.get('style', Config.DEFAULT_STYLE),
-                model=kwargs.get('model', VideoServiceFactory.get_default_model(mode))
+                model=kwargs.get('model', VideoServiceFactory.get_default_model(mode)),
+                duration=kwargs.get('duration', Config.DEFAULT_DURATION),
+                audio_enabled=kwargs.get('audio_enabled', Config.DEFAULT_AUDIO_ENABLED),
+                audio_url=kwargs.get('audio_url')
             )
         elif mode == "keyframe_to_video":
             return self.current_service.generate_video(

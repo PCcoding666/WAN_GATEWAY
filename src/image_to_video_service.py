@@ -50,7 +50,10 @@ class ImageToVideoService(BaseVideoService):
         image_file,
         prompt: str = "",
         style: str = Config.DEFAULT_STYLE,
-        model: str = "wan2.2-i2v-plus"
+        model: str = "wan2.5-i2v-preview",
+        duration: int = Config.DEFAULT_DURATION,
+        audio_enabled: bool = Config.DEFAULT_AUDIO_ENABLED,
+        audio_url: Optional[str] = None
     ) -> VideoResult:
         """
         Generate video from a single image.
@@ -59,7 +62,10 @@ class ImageToVideoService(BaseVideoService):
             image_file: The uploaded image file (from Gradio)
             prompt: Optional text prompt for guidance
             style: Video style (default from config)
-            model: Model to use for generation (must be keyframe model)
+            model: Model to use for generation (must be image-to-video model)
+            duration: Video duration in seconds (5 or 10, for Wan 2.5)
+            audio_enabled: Enable automatic audio generation (for Wan 2.5)
+            audio_url: Optional custom audio URL (for Wan 2.5)
             
         Returns:
             VideoResult with success status and video URL or error message
@@ -68,7 +74,7 @@ class ImageToVideoService(BaseVideoService):
         
         try:
             # Validate inputs
-            validation_error = self._validate_image_inputs(image_file, prompt, model)
+            validation_error = self._validate_image_inputs(image_file, prompt, model, duration)
             if validation_error:
                 return VideoResult(
                     success=False,
@@ -87,7 +93,10 @@ class ImageToVideoService(BaseVideoService):
             request_data = self._build_image_request(
                 public_image_url=public_image_url,
                 prompt=prompt.strip() if prompt else None,
-                model=model
+                model=model,
+                duration=duration,
+                audio_enabled=audio_enabled,
+                audio_url=audio_url
             )
             
             logger.info(f"Initiating image-to-video generation...")
@@ -129,7 +138,10 @@ class ImageToVideoService(BaseVideoService):
                     input_metadata={
                         "prompt": prompt,
                         "style": style,
-                        "image_info": image_info
+                        "image_info": image_info,
+                        "duration": duration,
+                        "audio_enabled": audio_enabled,
+                        "audio_url": audio_url
                     }
                 )
             else:
@@ -150,7 +162,8 @@ class ImageToVideoService(BaseVideoService):
         self,
         image_file,
         prompt: str,
-        model: str
+        model: str,
+        duration: int = Config.DEFAULT_DURATION
     ) -> Optional[str]:
         """
         Validate input parameters for image-to-video generation.
@@ -164,8 +177,14 @@ class ImageToVideoService(BaseVideoService):
         if model not in Config.get_image_to_video_models():
             return f"Invalid model for image-to-video. Must be one of: {', '.join(Config.get_image_to_video_models())}"
         
-        if prompt and len(prompt.strip()) > Config.MAX_PROMPT_LENGTH:
-            return f"Prompt too long. Maximum {Config.MAX_PROMPT_LENGTH} characters allowed"
+        # Get max prompt length based on model
+        max_length = Config.get_max_prompt_length(model)
+        if prompt and len(prompt.strip()) > max_length:
+            return f"Prompt too long. Maximum {max_length} characters allowed for model {model}"
+        
+        # Validate duration for Wan 2.5 models
+        if Config.supports_audio(model) and duration not in Config.DURATION_OPTIONS:
+            return f"Invalid duration. Must be one of: {', '.join(map(str, Config.DURATION_OPTIONS))} seconds"
         
         return None
     
@@ -226,7 +245,10 @@ class ImageToVideoService(BaseVideoService):
         self,
         public_image_url: str,
         prompt: Optional[str] = None,
-        model: str = "wan2.2-i2v-flash"  # Use recommended fastest model as default
+        model: str = "wan2.5-i2v-preview",
+        duration: int = Config.DEFAULT_DURATION,
+        audio_enabled: bool = Config.DEFAULT_AUDIO_ENABLED,
+        audio_url: Optional[str] = None
     ) -> dict:
         """
         Build API request payload for image-to-video generation using public URL.
@@ -235,6 +257,9 @@ class ImageToVideoService(BaseVideoService):
             public_image_url: Public URL of the uploaded image
             prompt: Optional text prompt
             model: Model to use for generation
+            duration: Video duration in seconds (for Wan 2.5)
+            audio_enabled: Enable automatic audio generation (for Wan 2.5)
+            audio_url: Optional custom audio URL (for Wan 2.5)
             
         Returns:
             dict: Formatted request payload
@@ -267,7 +292,18 @@ class ImageToVideoService(BaseVideoService):
         if prompt and prompt.strip():
             request_data["input"]["prompt"] = prompt.strip()
         
+        # Add Wan 2.5 specific parameters
+        if Config.supports_audio(model):
+            request_data["parameters"]["duration"] = duration
+            request_data["parameters"]["audio"] = audio_enabled
+            
+            # Add custom audio URL if provided
+            if audio_url and audio_url.strip():
+                request_data["parameters"]["audio_url"] = audio_url.strip()
+        
         logger.info(f"Using model: {model}, resolution: {resolution}")
+        if Config.supports_audio(model):
+            logger.info(f"Duration: {duration}s, Audio: {audio_enabled}")
         logger.info(f"Image URL: {public_image_url}")
         
         return request_data

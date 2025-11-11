@@ -119,7 +119,31 @@ class Config:
             "resolutions": ["720P"],
             "framerate": "30fps",
             "duration": "5 seconds",
-            "api_type": "keyframe_to_video"
+            "api_type": "keyframe_to_video",
+            "supports_audio": False
+        },
+        # Wan 2.5 Series - Latest Release with Audio Support
+        "wan2.5-t2v-preview": {
+            "name": "wan2.5-t2v-preview",
+            "description": "Wan 2.5 Preview - Audio generation, 5-10s videos, 1080P",
+            "resolutions": ["480P", "720P", "1080P"],
+            "framerate": "24fps",
+            "duration": "5-10 seconds",
+            "api_type": "text_to_video",
+            "supports_audio": True,
+            "max_prompt_length": 2000,
+            "resolution_format": "label"  # Uses "480P" instead of "832*480"
+        },
+        "wan2.5-i2v-preview": {
+            "name": "wan2.5-i2v-preview",
+            "description": "Wan 2.5 Preview - Image-to-video with audio, 5-10s, 1080P",
+            "resolutions": ["480P", "720P", "1080P"],
+            "framerate": "24fps",
+            "duration": "5-10 seconds",
+            "api_type": "image_to_video",
+            "supports_audio": True,
+            "max_prompt_length": 2000,
+            "resolution_format": "label"  # Uses "480P" instead of "832*480"
         }
     }
     
@@ -148,11 +172,16 @@ class Config:
     }
     
     # UI Settings
-    MAX_PROMPT_LENGTH = 1000
+    MAX_PROMPT_LENGTH = 2000  # Increased for Wan 2.5 models
     DEFAULT_STYLE = "<auto>"
     DEFAULT_ASPECT_RATIO = "16:9"
-    DEFAULT_MODEL = "wan2.2-t2v-plus"
-    DEFAULT_IMAGE_TO_VIDEO_MODEL = "wan2.2-i2v-flash"  # Recommended fastest model
+    DEFAULT_MODEL = "wan2.5-t2v-preview"  # Updated to latest Wan 2.5
+    DEFAULT_IMAGE_TO_VIDEO_MODEL = "wan2.5-i2v-preview"  # Updated to latest Wan 2.5
+    
+    # Wan 2.5 specific settings
+    DEFAULT_DURATION = 5  # Default video duration in seconds
+    DURATION_OPTIONS = [5, 10]  # Available duration options for Wan 2.5
+    DEFAULT_AUDIO_ENABLED = True  # Enable audio by default for Wan 2.5 models
     
     # Video File Management
     VIDEO_CACHE_MAX_AGE_HOURS = 24  # Clean up videos older than 24 hours
@@ -227,6 +256,27 @@ class Config:
         if model_id in cls.MODEL_OPTIONS:
             return cls.MODEL_OPTIONS[model_id]["resolutions"]
         return ["480P", "720P", "1080P"]
+    
+    @classmethod
+    def supports_audio(cls, model_id: str) -> bool:
+        """Check if model supports audio generation."""
+        if model_id in cls.MODEL_OPTIONS:
+            return cls.MODEL_OPTIONS[model_id].get("supports_audio", False)
+        return False
+    
+    @classmethod
+    def get_max_prompt_length(cls, model_id: str) -> int:
+        """Get maximum prompt length for a specific model."""
+        if model_id in cls.MODEL_OPTIONS:
+            return cls.MODEL_OPTIONS[model_id].get("max_prompt_length", 1000)
+        return 1000
+    
+    @classmethod
+    def uses_resolution_label(cls, model_id: str) -> bool:
+        """Check if model uses resolution labels (e.g., '480P') instead of dimensions (e.g., '832*480')."""
+        if model_id in cls.MODEL_OPTIONS:
+            return cls.MODEL_OPTIONS[model_id].get("resolution_format") == "label"
+        return False
     
     @classmethod
     def get_api_type_for_model(cls, model_id: str) -> str:

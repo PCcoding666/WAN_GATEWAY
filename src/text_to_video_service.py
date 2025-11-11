@@ -66,7 +66,10 @@ class TextToVideoService(BaseVideoService):
         aspect_ratio: str = Config.DEFAULT_ASPECT_RATIO,
         model: str = Config.DEFAULT_MODEL,
         negative_prompt: Optional[str] = None,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        duration: int = Config.DEFAULT_DURATION,
+        audio_enabled: bool = Config.DEFAULT_AUDIO_ENABLED,
+        audio_url: Optional[str] = None
     ) -> VideoResult:
         """
         Generate video from text prompt.
@@ -78,6 +81,9 @@ class TextToVideoService(BaseVideoService):
             model: Model to use for generation (default from config)
             negative_prompt: Optional negative prompt
             seed: Optional seed for reproducibility
+            duration: Video duration in seconds (5 or 10, for Wan 2.5)
+            audio_enabled: Enable automatic audio generation (for Wan 2.5)
+            audio_url: Optional custom audio URL (for Wan 2.5)
             
         Returns:
             VideoResult with success status and video URL or error message
@@ -100,7 +106,10 @@ class TextToVideoService(BaseVideoService):
                 aspect_ratio=aspect_ratio,
                 model=model,
                 negative_prompt=negative_prompt,
-                seed=seed
+                seed=seed,
+                duration=duration,
+                audio_enabled=audio_enabled,
+                audio_url=audio_url
             )
             
             logger.info(f"Initiating video generation for prompt: {prompt[:50]}...")
@@ -144,7 +153,10 @@ class TextToVideoService(BaseVideoService):
                         "style": style,
                         "aspect_ratio": aspect_ratio,
                         "negative_prompt": negative_prompt,
-                        "seed": seed
+                        "seed": seed,
+                        "duration": duration,
+                        "audio_enabled": audio_enabled,
+                        "audio_url": audio_url
                     }
                 )
             else:
@@ -166,7 +178,8 @@ class TextToVideoService(BaseVideoService):
         prompt: str, 
         style: str, 
         aspect_ratio: str,
-        model: str
+        model: str,
+        duration: int = Config.DEFAULT_DURATION
     ) -> Optional[str]:
         """
         Validate input parameters.
@@ -177,8 +190,10 @@ class TextToVideoService(BaseVideoService):
         if not prompt or not prompt.strip():
             return "Prompt cannot be empty"
         
-        if len(prompt.strip()) > Config.MAX_PROMPT_LENGTH:
-            return f"Prompt too long. Maximum {Config.MAX_PROMPT_LENGTH} characters allowed"
+        # Get max prompt length based on model
+        max_length = Config.get_max_prompt_length(model)
+        if len(prompt.strip()) > max_length:
+            return f"Prompt too long. Maximum {max_length} characters allowed for model {model}"
         
         if style not in Config.STYLE_OPTIONS:
             return f"Invalid style. Must be one of: {', '.join(Config.STYLE_OPTIONS)}"
@@ -189,6 +204,10 @@ class TextToVideoService(BaseVideoService):
         if model not in Config.get_text_to_video_models():
             return f"Invalid model. Must be one of: {', '.join(Config.get_text_to_video_models())}"
         
+        # Validate duration for Wan 2.5 models
+        if Config.supports_audio(model) and duration not in Config.DURATION_OPTIONS:
+            return f"Invalid duration. Must be one of: {', '.join(map(str, Config.DURATION_OPTIONS))} seconds"
+        
         return None
     
     def _build_request(
@@ -198,7 +217,10 @@ class TextToVideoService(BaseVideoService):
         aspect_ratio: str,
         model: str,
         negative_prompt: Optional[str] = None,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        duration: int = Config.DEFAULT_DURATION,
+        audio_enabled: bool = Config.DEFAULT_AUDIO_ENABLED,
+        audio_url: Optional[str] = None
     ) -> dict:
         """
         Build API request payload.
@@ -211,10 +233,25 @@ class TextToVideoService(BaseVideoService):
             "input": {
                 "prompt": prompt
             },
-            "parameters": {
-                "size": self._get_resolution_from_aspect_ratio(aspect_ratio, model)
-            }
+            "parameters": {}
         }
+        
+        # Handle resolution format based on model
+        if Config.uses_resolution_label(model):
+            # Wan 2.5 uses resolution labels like "480P", "720P", "1080P"
+            request_data["parameters"]["resolution"] = self._get_resolution_label(aspect_ratio, model)
+        else:
+            # Older models use size like "1920*1080"
+            request_data["parameters"]["size"] = self._get_resolution_from_aspect_ratio(aspect_ratio, model)
+        
+        # Add Wan 2.5 specific parameters
+        if Config.supports_audio(model):
+            request_data["parameters"]["duration"] = duration
+            request_data["parameters"]["audio"] = audio_enabled
+            
+            # Add custom audio URL if provided
+            if audio_url and audio_url.strip():
+                request_data["parameters"]["audio_url"] = audio_url.strip()
         
         # Add optional parameters
         if negative_prompt and negative_prompt.strip():
@@ -334,3 +371,25 @@ class TextToVideoService(BaseVideoService):
             }
         
         return resolution_map.get(aspect_ratio, resolution_map["16:9"])  # Default to 16:9
+    
+    def _get_resolution_label(self, aspect_ratio: str, model: str) -> str:
+        """
+        Get resolution label for Wan 2.5 models (e.g., "480P", "720P", "1080P").
+        
+        Args:
+            aspect_ratio: Aspect ratio string (e.g., "16:9", "1:1", "9:16")
+            model: Model name to determine supported resolutions
+            
+        Returns:
+            str: Resolution label (e.g., "1080P")
+        """
+        # Get supported resolutions for the model
+        supported_resolutions = Config.get_supported_resolutions_for_model(model)
+        
+        # For Wan 2.5, prefer highest available resolution
+        if "1080P" in supported_resolutions:
+            return "1080P"
+        elif "720P" in supported_resolutions:
+            return "720P"
+        else:
+            return "480P"

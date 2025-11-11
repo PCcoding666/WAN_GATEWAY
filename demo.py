@@ -34,8 +34,8 @@ def demo_service_factory():
     print("\n🔧 Service Factory Validation:")
     # Test validation
     valid_combinations = [
-        ("text_to_video", "wan2.2-t2v-plus"),
-        ("image_to_video", "wanx2.1-kf2v-plus"),
+        ("text_to_video", "wan2.5-t2v-preview"),
+        ("image_to_video", "wan2.5-i2v-preview"),
         ("keyframe_to_video", "wanx2.1-kf2v-plus")
     ]
     
@@ -73,13 +73,25 @@ def demo_configuration():
     """Demonstrate configuration capabilities."""
     print("\n⚙️ Configuration Demo:")
     
-    print(f"  Max Prompt Length: {Config.MAX_PROMPT_LENGTH}")
+    print(f"  Max Prompt Length: {Config.MAX_PROMPT_LENGTH} (Wan 2.5 supports up to 2000 characters)")
     print(f"  Default Style: {Config.DEFAULT_STYLE}")
     print(f"  Default Aspect Ratio: {Config.DEFAULT_ASPECT_RATIO}")
+    print(f"  Default Model (Text): {Config.DEFAULT_MODEL}")
+    print(f"  Default Model (Image): {Config.DEFAULT_IMAGE_TO_VIDEO_MODEL}")
     print(f"  Text-to-Video Polling Interval: {Config.POLLING_INTERVAL}s")
     print(f"  Keyframe Polling Interval: {Config.KEYFRAME_POLLING_INTERVAL}s")
     print(f"  Max Poll Time (Text): {Config.MAX_POLL_TIME}s")
     print(f"  Max Poll Time (Keyframe): {Config.KEYFRAME_MAX_POLL_TIME}s")
+    
+    print("\n🎵 Wan 2.5 Audio Features:")
+    print(f"  Default Duration: {Config.DEFAULT_DURATION}s")
+    print(f"  Duration Options: {', '.join(map(str, Config.DURATION_OPTIONS))}s")
+    print(f"  Audio Enabled by Default: {Config.DEFAULT_AUDIO_ENABLED}")
+    
+    print("\n🎥 Model Capabilities:")
+    for model_id, model_info in Config.MODEL_OPTIONS.items():
+        if model_info.get('supports_audio'):
+            print(f"  ✅ {model_id}: Supports audio, max {model_info.get('max_prompt_length', 1000)} chars")
     
     print("\n📏 Image Upload Constraints:")
     img_config = Config.IMAGE_UPLOAD_CONFIG
@@ -109,10 +121,16 @@ def main():
         
         print("\n" + "=" * 50)
         print("✅ Demo completed successfully!")
+        print("\n🎉 New in Wan 2.5:")
+        print("  • Audio generation support (auto or custom audio URL)")
+        print("  • Extended video duration (5s or 10s)")
+        print("  • Higher resolution support (1080P)")
+        print("  • Longer prompt support (up to 2000 characters)")
+        print("  • Improved 24fps frame rate for smoother videos")
         print("\nNext steps:")
         print("  1. Set your DASHSCOPE_API_KEY in a .env file")
         print("  2. Run 'python main.py' to start the web interface")
-        print("  3. Try all three generation modes!")
+        print("  3. Try the new Wan 2.5 models with audio features!")
         
     except Exception as e:
         print(f"\n❌ Demo failed: {e}")

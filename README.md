@@ -10,6 +10,9 @@ A comprehensive web application built with Gradio that provides an intuitive int
 
 ## ✨ Core Features
 
+- 🆕 **Wan 2.5 Support**: Latest models with audio generation and 10s video support
+- 🎵 **Audio Generation**: Auto-generated or custom audio for synchronized videos
+- ⏱️ **Extended Duration**: 5-10 second video generation (upgraded from 5s)
 - **🎥 Text-to-Video**: Convert text descriptions into high-quality videos
 - **🖼️ Image-to-Video**: Generate dynamic videos from a single image
 - **🎞️ Keyframe-to-Video**: Create smooth transitions between start and end frames
@@ -20,6 +23,17 @@ A comprehensive web application built with Gradio that provides an intuitive int
 - **📱 Responsive Interface**: Beautiful and user-friendly interface with real-time feedback
 - **📊 Status Tracking**: Detailed progress and error reporting
 - **☁️ OSS Integration**: Optional Alibaba Cloud OSS storage support
+
+## 🎉 What's New in Wan 2.5
+
+- 🎵 **Audio Generation**: Automatically generate synchronized audio or use custom audio URLs
+- ⏰ **Longer Videos**: Create 5-10 second videos (doubled from previous 5s limit)
+- 📐 **1080P Support**: Full high-definition video output across all Wan 2.5 models
+- 📝 **Extended Prompts**: Support for up to 2000 characters (upgraded from 1000)
+- 🎬 **24fps Frame Rate**: Smoother, cinema-quality video playback
+- 🔧 **Backward Compatible**: All Wan 2.2 models remain available
+
+For detailed Wan 2.5 updates, see [WAN_2.5_UPDATE.md](WAN_2.5_UPDATE.md)
 
 ## 🚀 Quick Start
 
@@ -80,16 +94,32 @@ The application supports three video generation modes:
 #### 1. 📝 Text-to-Video
 - **Processing Time**: 1-2 minutes
 - **Description**: Generate videos through detailed text descriptions
-- **Available Models**: wan2.2-t2v-plus (recommended), wanx2.1-t2v-turbo, wanx2.1-t2v-plus
+- **Available Models**: 
+  - 🆕 **wan2.5-t2v-preview** (Recommended) - Audio support, 5-10s, 1080P
+  - wan2.2-t2v-plus - Latest high-quality model
+  - wanx2.1-t2v-turbo - Fast generation
+  - wanx2.1-t2v-plus - High-quality generation
 - **Resolution Support**: 480P-1080P
-- **Features**: Style control, aspect ratio, negative prompts, seed control
+- **Features**: 
+  - 🎵 Audio generation (Wan 2.5)
+  - ⏱️ 5-10 second duration (Wan 2.5)
+  - Style control, aspect ratio
+  - Negative prompts, seed control
+  - Up to 2000 characters prompt (Wan 2.5)
 
 #### 2. 🖼️ Image-to-Video  
 - **Processing Time**: 7-10 minutes
 - **Description**: Generate dynamic videos from a single image
-- **Available Models**: wan2.2-i2v-flash (fastest), wan2.2-i2v-plus, wanx2.1-i2v-plus, wanx2.1-i2v-turbo
+- **Available Models**: 
+  - 🆕 **wan2.5-i2v-preview** (Recommended) - Audio support, 5-10s, 1080P
+  - wan2.2-i2v-flash - Fastest generation
+  - wan2.2-i2v-plus - Latest high-quality
+  - wanx2.1-i2v-plus, wanx2.1-i2v-turbo
 - **Image Requirements**: JPEG/PNG/BMP/WEBP, max 10MB, 360-2000px dimensions
-- **Features**: Optional text guidance, style control
+- **Features**: 
+  - 🎵 Audio generation (Wan 2.5)
+  - ⏱️ 5-10 second duration (Wan 2.5)
+  - Optional text guidance, style control
 
 #### 3. 🎞️ Keyframe-to-Video
 - **Processing Time**: 7-10 minutes  

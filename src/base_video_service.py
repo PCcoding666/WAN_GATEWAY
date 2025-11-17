@@ -50,9 +50,96 @@ class BaseVideoService(ABC):
         """Get the maximum polling time for this service."""
         pass
     
+    def _check_task_status(self, task_id: str) -> Dict[str, Any]:
+        """
+        Check task status once without blocking (non-polling).
+        
+        Args:
+            task_id: Task ID to check
+            
+        Returns:
+            Dict with status information:
+                - status: PENDING, RUNNING, SUCCEEDED, FAILED, or ERROR
+                - video_url: Video URL if succeeded
+                - error_message: Error message if failed
+        """
+        headers = {
+            'Authorization': f'Bearer {self.api_key}'
+        }
+        
+        poll_url = f"https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}"
+        
+        try:
+            response = requests.get(
+                poll_url,
+                headers=headers,
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            
+            logger.info(f"Status check response: {response.status_code}")
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if 'output' in result:
+                    status = result['output'].get('task_status', 'UNKNOWN')
+                    
+                    if status == 'SUCCEEDED':
+                        # Extract video URL
+                        video_url = None
+                        if 'video_url' in result['output']:
+                            video_url = result['output']['video_url']
+                        elif 'results' in result['output'] and result['output']['results']:
+                            video_result = result['output']['results'][0]
+                            if 'url' in video_result:
+                                video_url = video_result['url']
+                        
+                        return {
+                            'status': 'SUCCEEDED',
+                            'video_url': video_url
+                        }
+                    elif status == 'FAILED':
+                        error_msg = "Task failed"
+                        if 'error' in result['output']:
+                            error_msg = str(result['output']['error'])
+                        logger.error(f"Task {task_id} failed: {error_msg}")
+                        return {
+                            'status': 'FAILED',
+                            'error_message': error_msg
+                        }
+                    elif status in ['PENDING', 'RUNNING']:
+                        return {
+                            'status': status
+                        }
+                    else:
+                        return {
+                            'status': 'UNKNOWN',
+                            'error_message': f'Unknown task status: {status}'
+                        }
+                else:
+                    return {
+                        'status': 'ERROR',
+                        'error_message': 'Invalid response format'
+                    }
+            else:
+                error_msg = f"Status check failed with code {response.status_code}"
+                logger.error(error_msg)
+                return {
+                    'status': 'ERROR',
+                    'error_message': error_msg
+                }
+                
+        except Exception as e:
+            error_msg = f"Error checking task status: {str(e)}"
+            logger.error(error_msg)
+            return {
+                'status': 'ERROR',
+                'error_message': error_msg
+            }
+    
     def _poll_task_result(self, task_id: str) -> Optional[str]:
         """
-        Poll for task completion and retrieve video URL.
+        Poll for task completion and retrieve video URL (blocking).
         
         Args:
             task_id: Task ID to poll for
@@ -60,61 +147,24 @@ class BaseVideoService(ABC):
         Returns:
             Optional[str]: Video URL if successful, None if failed or timed out
         """
-        headers = {
-            'Authorization': f'Bearer {self.api_key}'
-        }
-        
-        # Use the correct polling endpoint
-        poll_url = f"https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}"
         start_time = time.time()
         polling_interval = self.get_polling_interval()
         max_poll_time = self.get_max_poll_time()
         
         while time.time() - start_time < max_poll_time:
-            try:
-                response = requests.get(
-                    poll_url,
-                    headers=headers,
-                    timeout=Config.REQUEST_TIMEOUT
-                )
-                
-                logger.info(f"Polling response status: {response.status_code}")
-                logger.info(f"Polling response content: {response.text}")
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    
-                    # Check task status
-                    if 'output' in result:
-                        status = result['output'].get('task_status', 'UNKNOWN')
-                        
-                        if status == 'SUCCEEDED':
-                            # Extract video URL
-                            if 'video_url' in result['output']:
-                                return result['output']['video_url']
-                            elif 'results' in result['output'] and result['output']['results']:
-                                # Alternative response format
-                                video_result = result['output']['results'][0]
-                                if 'url' in video_result:
-                                    return video_result['url']
-                        elif status == 'FAILED':
-                            logger.error(f"Task {task_id} failed")
-                            if 'error' in result['output']:
-                                logger.error(f"Error details: {result['output']['error']}")
-                            return None
-                        elif status in ['PENDING', 'RUNNING']:
-                            # Continue polling
-                            logger.info(f"Task {task_id} status: {status}, continuing to poll...")
-                        else:
-                            logger.warning(f"Unknown task status: {status}")
-                else:
-                    logger.error(f"Polling failed with status {response.status_code}: {response.text}")
-                
-                # Wait before next poll
+            status_result = self._check_task_status(task_id)
+            
+            if status_result['status'] == 'SUCCEEDED':
+                return status_result.get('video_url')
+            elif status_result['status'] == 'FAILED':
+                return None
+            elif status_result['status'] in ['PENDING', 'RUNNING']:
+                # Continue polling
+                logger.info(f"Task {task_id} status: {status_result['status']}, continuing to poll...")
                 time.sleep(polling_interval)
-                
-            except Exception as e:
-                logger.error(f"Error polling task {task_id}: {str(e)}")
+            else:
+                # ERROR or UNKNOWN status
+                logger.error(f"Task {task_id} error: {status_result.get('error_message', 'Unknown error')}")
                 time.sleep(polling_interval)
         
         logger.error(f"Task {task_id} timed out after {max_poll_time} seconds")

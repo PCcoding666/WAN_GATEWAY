@@ -177,6 +177,7 @@ class Config:
     DEFAULT_ASPECT_RATIO = "16:9"
     DEFAULT_MODEL = "wan2.5-t2v-preview"  # Updated to latest Wan 2.5
     DEFAULT_IMAGE_TO_VIDEO_MODEL = "wan2.5-i2v-preview"  # Updated to latest Wan 2.5
+    DEFAULT_KEYFRAME_TO_VIDEO_MODEL = "wanx2.1-kf2v-plus"  # Default keyframe model
     
     # Wan 2.5 specific settings
     DEFAULT_DURATION = 5  # Default video duration in seconds
@@ -242,6 +243,14 @@ class Config:
         if model_id in cls.MODEL_OPTIONS:
             return cls.MODEL_OPTIONS[model_id]["name"]
         return model_id
+    
+    @classmethod
+    def get_model_id_from_display_name(cls, display_name: str) -> str:
+        """Get model ID from display name."""
+        for model_id, info in cls.MODEL_OPTIONS.items():
+            if info["name"] == display_name:
+                return model_id
+        return display_name  # Return as-is if not found
     
     @classmethod
     def get_model_description(cls, model_id: str) -> str:

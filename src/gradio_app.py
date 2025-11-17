@@ -22,6 +22,8 @@ class EnhancedGradioVideoApp:
     def __init__(self):
         """Initialize the Enhanced Gradio application."""
         self.app = MultiModalVideoApp()
+        # Store task metadata for async processing
+        self.active_tasks = {}  # task_id -> {mode, start_time, params}
         logger.info("Enhanced Gradio Video application initialized")
     
     def generate_video_handler(
@@ -152,6 +154,252 @@ class EnhancedGradioVideoApp:
             error_msg = f"❌ Unexpected error: {str(e)}"
             logger.error(error_msg)
             return None, error_msg
+    
+    def submit_task_handler(
+        self,
+        mode: str,
+        # Text-to-Video inputs
+        text_prompt: str,
+        text_model: str,
+        text_style: str,
+        text_aspect_ratio: str,
+        text_negative_prompt: str,
+        text_seed: str,
+        text_duration: int,
+        text_audio_enabled: bool,
+        text_audio_url: str,
+        # Image-to-Video inputs
+        image_file,
+        image_prompt: str,
+        image_style: str,
+        image_duration: int,
+        image_audio_enabled: bool,
+        image_audio_url: str,
+        # Keyframe-to-Video inputs
+        start_frame_file,
+        end_frame_file,
+        keyframe_prompt: str,
+        keyframe_style: str
+    ) -> Tuple[str, str, bool]:
+        """
+        Submit video generation task asynchronously and return task ID.
+        
+        Returns:
+            Tuple[str, str, bool]: (task_id, status_message, timer_active)
+        """
+        import time as time_module
+        
+        try:
+            logger.info(f"Submitting async task with mode: {mode}")
+            
+            # Prepare service based on mode
+            if mode == "Text-to-Video":
+                if not text_prompt or not text_prompt.strip():
+                    return "", "❌ Please enter a text description for video generation.", False
+                
+                self.app.set_mode("text_to_video")
+                service = self.app.current_service
+                
+                # Convert seed to int if provided
+                seed_int = None
+                if text_seed and text_seed.strip():
+                    try:
+                        seed_int = int(float(text_seed))
+                    except (ValueError, TypeError):
+                        return "", "❌ Invalid seed value. Please enter a valid number.", False
+                
+                # Process prompts
+                neg_prompt = text_negative_prompt.strip() if text_negative_prompt else None
+                audio_url = text_audio_url.strip() if text_audio_url and text_audio_url.strip() else None
+                
+                # Build request and submit task
+                from .text_to_video_service import TextToVideoService
+                if not isinstance(service, TextToVideoService):
+                    return "", "❌ Service initialization failed", False
+                
+                # Build request data
+                request_data = service._build_request(
+                    prompt=text_prompt,
+                    style=Config.get_style_value_from_display(text_style),
+                    aspect_ratio=text_aspect_ratio,
+                    model=Config.get_model_id_from_display_name(text_model),
+                    negative_prompt=neg_prompt,
+                    seed=seed_int,
+                    duration=text_duration,
+                    audio_enabled=text_audio_enabled,
+                    audio_url=audio_url
+                )
+                
+                # Submit task
+                task_response = service._submit_task(request_data)
+                
+            elif mode == "Image-to-Video":
+                if image_file is None:
+                    return "", "❌ Please upload an image for video generation.", False
+                
+                self.app.set_mode("image_to_video")
+                service = self.app.current_service
+                
+                from .image_to_video_service import ImageToVideoService
+                if not isinstance(service, ImageToVideoService):
+                    return "", "❌ Service initialization failed", False
+                
+                # Validate and process image
+                validation_error = service._validate_image_inputs(
+                    image_file, image_prompt or "", 
+                    Config.DEFAULT_IMAGE_TO_VIDEO_MODEL, image_duration
+                )
+                if validation_error:
+                    return "", f"❌ {validation_error}", False
+                
+                # Process image and upload to OSS
+                public_image_url, image_info = service._process_image_upload(image_file)
+                if not public_image_url:
+                    return "", "❌ Failed to process and upload image", False
+                
+                # Process audio URL
+                audio_url = image_audio_url.strip() if image_audio_url and image_audio_url.strip() else None
+                
+                # Build request
+                request_data = service._build_image_request(
+                    public_image_url=public_image_url,
+                    prompt=image_prompt.strip() if image_prompt else None,
+                    model=Config.DEFAULT_IMAGE_TO_VIDEO_MODEL,
+                    duration=image_duration,
+                    audio_enabled=image_audio_enabled,
+                    audio_url=audio_url
+                )
+                
+                # Submit task
+                task_response = service._submit_task(request_data)
+                
+            elif mode == "Keyframe-to-Video":
+                if start_frame_file is None or end_frame_file is None:
+                    return "", "❌ Please upload both start and end frame images.", False
+                
+                self.app.set_mode("keyframe_to_video")
+                service = self.app.current_service
+                
+                from .keyframe_to_video_service import KeyFrameVideoService
+                if not isinstance(service, KeyFrameVideoService):
+                    return "", "❌ Service initialization failed", False
+                
+                # Process and upload images
+                start_url, start_info = service._process_image_upload(start_frame_file)
+                end_url, end_info = service._process_image_upload(end_frame_file)
+                
+                if not start_url or not end_url:
+                    return "", "❌ Failed to process and upload keyframe images", False
+                
+                # Build request
+                request_data = service._build_keyframe_request(
+                    start_frame_url=start_url,
+                    end_frame_url=end_url,
+                    prompt=keyframe_prompt.strip() if keyframe_prompt else None,
+                    model=Config.DEFAULT_KEYFRAME_TO_VIDEO_MODEL
+                )
+                
+                # Submit task
+                task_response = service._submit_task(request_data)
+            else:
+                return "", f"❌ Unsupported generation mode: {mode}", False
+            
+            # Check task submission response
+            if not task_response.get('success', False):
+                return "", f"❌ {task_response.get('error', 'Failed to submit generation task')}", False
+            
+            task_id = task_response.get('task_id')
+            if not task_id:
+                return "", "❌ No task ID received from API", False
+            
+            # Store task metadata
+            self.active_tasks[task_id] = {
+                'mode': mode,
+                'start_time': time_module.time(),
+                'service': service
+            }
+            
+            status_msg = f"✅ Task submitted successfully! Task ID: {task_id}\n⏳ Generating video... This may take several minutes."
+            logger.info(f"Task {task_id} submitted for mode {mode}")
+            
+            # Return task_id, status, and timer_active=True to start polling
+            return task_id, status_msg, True
+            
+        except Exception as e:
+            error_msg = f"❌ Unexpected error during task submission: {str(e)}"
+            logger.error(error_msg)
+            return "", error_msg, False
+    
+    def check_task_status_handler(self, task_id: str) -> Tuple[Optional[str], str, bool]:
+        """
+        Check the status of a submitted task (non-blocking).
+        
+        Args:
+            task_id: The task ID to check
+            
+        Returns:
+            Tuple[Optional[str], str, bool]: (video_path, status_message, timer_active)
+        """
+        import time as time_module
+        
+        if not task_id:
+            return None, "No active task", False
+        
+        try:
+            # Get task metadata
+            task_meta = self.active_tasks.get(task_id)
+            if not task_meta:
+                return None, f"⚠️ Task {task_id} not found in active tasks", False
+            
+            service = task_meta['service']
+            elapsed_time = time_module.time() - task_meta['start_time']
+            
+            # Check task status
+            status_result = service._check_task_status(task_id)
+            
+            if status_result['status'] == 'SUCCEEDED':
+                video_url = status_result.get('video_url')
+                if video_url:
+                    logger.info(f"Task {task_id} completed in {elapsed_time:.1f}s")
+                    
+                    # Download video locally
+                    local_path = service._download_video_locally(video_url, task_id)
+                    
+                    # Clean up task from active tasks
+                    del self.active_tasks[task_id]
+                    
+                    video_path = local_path if local_path and os.path.exists(local_path) else video_url
+                    status_msg = f"✅ Video generated successfully in {elapsed_time:.1f}s (Task ID: {task_id})"
+                    
+                    # Return video, status, and timer_active=False to stop polling
+                    return video_path, status_msg, False
+                else:
+                    del self.active_tasks[task_id]
+                    return None, "❌ Video generation succeeded but no URL available", False
+                    
+            elif status_result['status'] == 'FAILED':
+                error_msg = status_result.get('error_message', 'Unknown error')
+                logger.error(f"Task {task_id} failed: {error_msg}")
+                del self.active_tasks[task_id]
+                return None, f"❌ Video generation failed: {error_msg}", False
+                
+            elif status_result['status'] in ['PENDING', 'RUNNING']:
+                status_msg = f"⏳ Generating video... ({elapsed_time:.0f}s elapsed)\nStatus: {status_result['status']}\nTask ID: {task_id}"
+                # Keep polling
+                return None, status_msg, True
+                
+            else:
+                # ERROR or UNKNOWN status
+                error_msg = status_result.get('error_message', 'Unknown error')
+                status_msg = f"⚠️ Task status check error: {error_msg} ({elapsed_time:.0f}s elapsed)"
+                # Keep polling for a bit in case it's a transient error
+                return None, status_msg, True
+                
+        except Exception as e:
+            error_msg = f"❌ Error checking task status: {str(e)}"
+            logger.error(error_msg)
+            # Don't stop polling on exceptions, might be transient
+            return None, error_msg, True
     
     def create_interface(self) -> gr.Blocks:
         """
@@ -310,6 +558,9 @@ class EnhancedGradioVideoApp:
                         value=style_choices[0] if style_choices else "Auto"
                     )
             
+            # Hidden state for task tracking
+            task_id_state = gr.State(value="")
+            
             # Generation button and outputs
             with gr.Row():
                 generate_btn = gr.Button("🎬 Generate Video", variant="primary", size="lg")
@@ -317,6 +568,9 @@ class EnhancedGradioVideoApp:
             with gr.Row():
                 status_output = gr.Textbox(label="Status", interactive=False, lines=2)
                 video_output = gr.Video(label="Generated Video", height=400)
+            
+            # Timer for polling task status (hidden, starts inactive)
+            status_timer = gr.Timer(value=5, active=False)
             
             # Mode switching logic
             def update_visibility(mode):
@@ -332,9 +586,9 @@ class EnhancedGradioVideoApp:
                 outputs=[text_group, image_group, keyframe_group]
             )
             
-            # Generation event
+            # Async task submission - this is now non-blocking
             generate_btn.click(
-                self.generate_video_handler,
+                self.submit_task_handler,
                 inputs=[
                     mode_selector,
                     # Text-to-Video inputs
@@ -347,7 +601,14 @@ class EnhancedGradioVideoApp:
                     # Keyframe-to-Video inputs
                     start_frame_file, end_frame_file, keyframe_prompt, keyframe_style
                 ],
-                outputs=[video_output, status_output]
+                outputs=[task_id_state, status_output, status_timer]
+            )
+            
+            # Timer tick event - polls task status
+            status_timer.tick(
+                self.check_task_status_handler,
+                inputs=[task_id_state],
+                outputs=[video_output, status_output, status_timer]
             )
             
             # Help section

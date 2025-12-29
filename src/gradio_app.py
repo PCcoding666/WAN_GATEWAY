@@ -11,6 +11,7 @@ from typing import Tuple, Optional, Dict, Any
 from .config import Config
 from .video_service_factory import VideoServiceFactory, MultiModalVideoApp
 from .text_to_video_service import VideoResult
+from .prompt_optimizer import optimize_prompt_with_qwen
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -433,71 +434,73 @@ class EnhancedGradioVideoApp:
             # Text-to-Video inputs
             with gr.Group(visible=True) as text_group:
                 gr.Markdown("### 📝 Text-to-Video Generation")
+                
+                # Main Prompt Area
                 with gr.Row():
-                    with gr.Column(scale=2):
-                        text_prompt = gr.Textbox(
-                            label="Video Description",
-                            placeholder="Describe the video you want to generate...",
-                            lines=3
-                        )
-                        text_negative_prompt = gr.Textbox(
-                            label="Negative Prompt (Optional)",
-                            placeholder="What you don't want to see in the video...",
-                            lines=2
-                        )
-                    with gr.Column(scale=1):
-                        text_model = gr.Radio(
-                            label="Model",
-                            choices=text_model_choices,
-                            value=text_model_choices[0] if text_model_choices else "Wanxiang 2.2 Pro"
-                        )
-                        text_style = gr.Dropdown(
-                            label="Style",
-                            choices=style_choices,
-                            value=style_choices[0] if style_choices else "Auto"
-                        )
-                        text_aspect_ratio = gr.Radio(
-                            label="Aspect Ratio",
-                            choices=["16:9", "1:1", "9:16"],
-                            value="16:9"
-                        )
+                    text_prompt = gr.Textbox(
+                        label="Video Description",
+                        placeholder="Describe the video you want to generate...",
+                        lines=3,
+                        scale=4
+                    )
+                    optimize_btn = gr.Button("✨ Optimize\nPrompt", size="sm", variant="secondary", scale=1)
+
+                # Primary Options
+                with gr.Row():
+                    text_model = gr.Dropdown(
+                        label="Model",
+                        choices=text_model_choices,
+                        value=text_model_choices[0] if text_model_choices else "Wanxiang 2.2 Pro"
+                    )
+                    text_style = gr.Dropdown(
+                        label="Style",
+                        choices=style_choices,
+                        value=style_choices[0] if style_choices else "Auto"
+                    )
+                    text_aspect_ratio = gr.Dropdown(
+                        label="Aspect Ratio",
+                        choices=["16:9", "1:1", "9:16"],
+                        value="16:9"
+                    )
+
+                # Advanced Options
+                with gr.Accordion("⚙️ Advanced Settings", open=False):
+                    text_negative_prompt = gr.Textbox(
+                        label="Negative Prompt",
+                        placeholder="What you don't want to see in the video...",
+                        lines=2
+                    )
+                    with gr.Row():
                         text_seed = gr.Textbox(
                             label="Seed (Optional)",
                             placeholder="Random seed for reproducibility"
                         )
-                with gr.Row():
-                    with gr.Column():
                         text_duration = gr.Radio(
-                            label="⏱️ Video Duration (Wan 2.5 Only)",
+                            label="⏱️ Duration",
                             choices=[5, 10],
-                            value=5,
-                            info="Duration in seconds"
+                            value=5
                         )
-                    with gr.Column():
+                    with gr.Row():
                         text_audio_enabled = gr.Checkbox(
-                            label="🎵 Enable Audio Generation (Wan 2.5 Only)",
-                            value=True,
-                            info="Automatically generate synchronized audio"
+                            label="🎵 Enable Audio Generation",
+                            value=True
                         )
-                with gr.Row():
-                    text_audio_url = gr.Textbox(
-                        label="🎧 Custom Audio URL (Optional, Wan 2.5 Only)",
-                        placeholder="https://example.com/audio.mp3",
-                        info="Provide a custom audio file URL"
-                    )
+                        text_audio_url = gr.Textbox(
+                            label="🎧 Custom Audio URL",
+                            placeholder="https://example.com/audio.mp3"
+                        )
             
             # Image-to-Video inputs
             with gr.Group(visible=False) as image_group:
                 gr.Markdown("### 🖼️ Image-to-Video Generation")
-                gr.Markdown("*Expected processing time: 7-10 minutes*")
+                
                 with gr.Row():
-                    with gr.Column(scale=1):
-                        image_file = gr.File(
-                            label="Upload Starting Image",
-                            file_types=["image"],
-                            type="filepath"
-                        )
-                    with gr.Column(scale=1):
+                    image_file = gr.Image(
+                        label="Upload Starting Image",
+                        type="filepath",
+                        height=300
+                    )
+                    with gr.Column():
                         image_prompt = gr.Textbox(
                             label="Guidance Prompt (Optional)",
                             placeholder="Describe the desired motion or style...",
@@ -508,44 +511,40 @@ class EnhancedGradioVideoApp:
                             choices=style_choices,
                             value=style_choices[0] if style_choices else "Auto"
                         )
-                with gr.Row():
-                    with gr.Column():
+
+                # Advanced Options
+                with gr.Accordion("⚙️ Advanced Settings", open=False):
+                    with gr.Row():
                         image_duration = gr.Radio(
-                            label="⏱️ Video Duration (Wan 2.5 Only)",
+                            label="⏱️ Duration",
                             choices=[5, 10],
-                            value=5,
-                            info="Duration in seconds"
+                            value=5
                         )
-                    with gr.Column():
                         image_audio_enabled = gr.Checkbox(
-                            label="🎵 Enable Audio Generation (Wan 2.5 Only)",
-                            value=True,
-                            info="Automatically generate synchronized audio"
+                            label="🎵 Enable Audio Generation",
+                            value=True
                         )
-                with gr.Row():
                     image_audio_url = gr.Textbox(
-                        label="🎧 Custom Audio URL (Optional, Wan 2.5 Only)",
-                        placeholder="https://example.com/audio.mp3",
-                        info="Provide a custom audio file URL"
+                        label="🎧 Custom Audio URL",
+                        placeholder="https://example.com/audio.mp3"
                     )
             
             # Keyframe-to-Video inputs
             with gr.Group(visible=False) as keyframe_group:
                 gr.Markdown("### 🎞️ Keyframe-to-Video Generation")
-                gr.Markdown("*Expected processing time: 7-10 minutes*")
+                
                 with gr.Row():
-                    with gr.Column():
-                        start_frame_file = gr.File(
-                            label="Upload Start Frame",
-                            file_types=["image"],
-                            type="filepath"
-                        )
-                    with gr.Column():
-                        end_frame_file = gr.File(
-                            label="Upload End Frame",
-                            file_types=["image"],
-                            type="filepath"
-                        )
+                    start_frame_file = gr.Image(
+                        label="Start Frame",
+                        type="filepath",
+                        height=250
+                    )
+                    end_frame_file = gr.Image(
+                        label="End Frame",
+                        type="filepath",
+                        height=250
+                    )
+                
                 with gr.Row():
                     keyframe_prompt = gr.Textbox(
                         label="Transition Guidance (Optional)",
@@ -566,8 +565,10 @@ class EnhancedGradioVideoApp:
                 generate_btn = gr.Button("🎬 Generate Video", variant="primary", size="lg")
             
             with gr.Row():
-                status_output = gr.Textbox(label="Status", interactive=False, lines=2)
-                video_output = gr.Video(label="Generated Video", height=400)
+                with gr.Column(scale=1):
+                    status_output = gr.Textbox(label="Status", interactive=False, lines=4)
+                with gr.Column(scale=2):
+                    video_output = gr.Video(label="Generated Video", height=400)
             
             # Timer for polling task status (hidden, starts inactive)
             status_timer = gr.Timer(value=5, active=False)
@@ -610,6 +611,14 @@ class EnhancedGradioVideoApp:
                 inputs=[task_id_state],
                 outputs=[video_output, status_output, status_timer]
             )
+            
+            # Prompt Optimization event
+            optimize_btn.click(
+                optimize_prompt_with_qwen,
+                inputs=[text_prompt],
+                outputs=[text_prompt]
+            )
+
             
             # Help section
             with gr.Accordion("ℹ️ Help & Information", open=False):
@@ -672,7 +681,6 @@ class EnhancedGradioVideoApp:
                 share=share,
                 debug=debug,
                 show_error=True,
-                show_api=False,
                 quiet=True
             )
         except Exception as e:
@@ -684,7 +692,6 @@ class EnhancedGradioVideoApp:
                     share=True,
                     debug=debug,
                     show_error=True,
-                    show_api=False,
                     quiet=True
                 )
             else:

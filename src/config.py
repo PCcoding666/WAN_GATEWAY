@@ -67,19 +67,21 @@ class Config:
         },
         "wanx2.1-t2v-turbo": {
             "name": "wanx2.1-t2v-turbo",
-            "description": "Fast generation model",
+            "description": "Wan 2.1 Turbo - Fast generation, supports audio",
             "resolutions": ["480P", "720P"],
             "framerate": "30fps",
             "duration": "5 seconds",
-            "api_type": "text_to_video"
+            "api_type": "text_to_video",
+            "supports_audio": True
         },
         "wanx2.1-t2v-plus": {
             "name": "wanx2.1-t2v-plus",
-            "description": "High-quality generation model",
+            "description": "Wan 2.1 Plus - High quality, supports audio",
             "resolutions": ["720P"],
             "framerate": "30fps",
             "duration": "5 seconds",
-            "api_type": "text_to_video"
+            "api_type": "text_to_video",
+            "supports_audio": True
         },
         "wan2.2-i2v-flash": {
             "name": "wan2.2-i2v-flash",
@@ -99,23 +101,25 @@ class Config:
         },
         "wanx2.1-i2v-plus": {
             "name": "wanx2.1-i2v-plus",
-            "description": "Complex motion with detailed physics",
+            "description": "Wan 2.1 Plus - Complex motion, supports audio",
             "resolutions": ["720P"],
             "framerate": "30fps",
             "duration": "5 seconds",
-            "api_type": "image_to_video"
+            "api_type": "image_to_video",
+            "supports_audio": True
         },
         "wanx2.1-i2v-turbo": {
             "name": "wanx2.1-i2v-turbo",
-            "description": "Fast generation with complex motion support",
+            "description": "Wan 2.1 Turbo - Fast generation, supports audio",
             "resolutions": ["480P", "720P"],
             "framerate": "30fps",
             "duration": "3-5 seconds",
-            "api_type": "image_to_video"
+            "api_type": "image_to_video",
+            "supports_audio": True
         },
         "wanx2.1-kf2v-plus": {
             "name": "wanx2.1-kf2v-plus",
-            "description": "Keyframe-to-video generation model",
+            "description": "Wan 2.1 Keyframe - Keyframe-to-video generation",
             "resolutions": ["720P"],
             "framerate": "30fps",
             "duration": "5 seconds",
@@ -331,10 +335,11 @@ class Config:
         
         return None
 
-# Validate configuration on import
-try:
-    Config.validate_config()
-    print("✓ Configuration validated successfully")
-except ValueError as e:
-    print(f"✗ Configuration error: {e}")
-    raise
+# Validate configuration on import only if running as main script
+if __name__ == "__main__":
+    try:
+        Config.validate_config()
+        print("✓ Configuration validated successfully")
+    except ValueError as e:
+        print(f"✗ Configuration error: {e}")
+        raise

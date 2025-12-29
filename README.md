@@ -438,6 +438,42 @@ For Chinese documentation, see the [doc](doc/) folder.
 - ✅ Docker and cloud deployment support
 - ✅ OSS cloud storage integration
 
+## 🛠️ Development and Testing
+
+### Prerequisites
+- Python 3.13+
+- `make` (optional, for convenience)
+
+### Setup
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   # OR
+   make install
+   ```
+
+### Running Tests
+This project uses `pytest` for testing.
+
+1. **Run all tests**:
+   ```bash
+   pytest tests/
+   # OR
+   make test
+   ```
+
+2. **Run with coverage**:
+   ```bash
+   pytest --cov=src tests/
+   # OR
+   make test-cov
+   ```
+
+### Project Structure for Testing
+- `tests/unit/`: Unit tests for individual components (Config, Services)
+- `tests/integration/`: Integration tests simulating full workflows
+- `tests/conftest.py`: Shared test fixtures and configuration
+
 ---
 
 **Built with ❤️ using Python and Gradio**

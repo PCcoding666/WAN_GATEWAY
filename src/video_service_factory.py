@@ -118,8 +118,7 @@ class VideoServiceFactory:
             # Prefer Wan 2.5 model for image-to-video
             return Config.DEFAULT_IMAGE_TO_VIDEO_MODEL if Config.DEFAULT_IMAGE_TO_VIDEO_MODEL in models else models[0]
         else:
-            # For keyframe modes, return the keyframe model
-            return "wanx2.1-kf2v-plus" if "wanx2.1-kf2v-plus" in models else models[0]
+            return Config.DEFAULT_KEYFRAME_TO_VIDEO_MODEL if Config.DEFAULT_KEYFRAME_TO_VIDEO_MODEL in models else models[0]
     
     @staticmethod
     def validate_mode_and_model(mode: str, model: str) -> Optional[str]:
@@ -210,7 +209,10 @@ class MultiModalVideoApp:
                 end_frame_file=kwargs.get('end_frame_file'),
                 prompt=kwargs.get('prompt', ''),
                 style=kwargs.get('style', Config.DEFAULT_STYLE),
-                model=kwargs.get('model', VideoServiceFactory.get_default_model(mode))
+                model=kwargs.get('model', VideoServiceFactory.get_default_model(mode)),
+                duration=kwargs.get('duration', Config.DEFAULT_DURATION),
+                audio_enabled=kwargs.get('audio_enabled', Config.DEFAULT_AUDIO_ENABLED),
+                resolution=kwargs.get('resolution'),
             )
         else:
             raise ValueError(f"Unsupported mode: {mode}")

@@ -6,6 +6,14 @@
 [![Gradio](https://img.shields.io/badge/gradio-5.43.1%2B-orange.svg)](https://gradio.app)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+## ✨ 2.0 新特性（2026-10）
+
+- 🆕 **模型对齐百炼最新一代**：默认 `wan3.0-video`（全能型，文/图/首尾帧/参考生视频，2–30 s，智能时长 `-1`，自适应比例，原生音频）；新增 `wan2.7-t2v / i2v / r2v`（2–15 s，新 `input.media` 结构）与 `wan2.6-*`（多镜头 `shot_type`、Flash 版）。2.5 / 2.2 / 2.1 保留为 legacy，`WAN_SHOW_LEGACY=1` 显示。完整矩阵见 [MODELS.md](MODELS.md)。
+- 🧭 **模型驱动的表单**：分辩率、比例、时长范围、音频、多镜头、提示词长度全部由 `src/models.py` 注册表决定，不可能拼出非法请求。
+- 🎭 新增 **参考生视频** 任务；🔍 **请求预览** 与 **dry-run**（`--dry-run`）；🕘 **任务历史 / 断点续取**（任务 id 本地持久化，刷新不丢，可粘贴 id 恢复，可取消排队任务）。
+- 🖥️ **命令行** `python cli.py models | generate | status | history`，与 UI 共用同一套构建器与客户端。
+- 🌐 `DASHSCOPE_REGION=cn|intl` 切换北京 / 新加坡地域。
+
 ## ✨ 核心功能
 
 - **🎥 文本生成视频**: 将文本描述转换为高质量视频

@@ -1,39 +1,48 @@
 [查看中文文档](doc/README_zh.md)
 
-# 🎬 Wan Gateway - Multi-Modal Video Generator
+# 🎬 Wan Gateway Studio — Wan 3.0 / 2.7 / 2.6 video generation
 
-A comprehensive web application built with Gradio that provides an intuitive interface for generating videos using Alibaba's Bailian APIs. Supports three generation modes: text-to-video, image-to-video, and keyframe-to-video generation.
+A Gradio studio **and** a CLI for Alibaba Cloud Model Studio's **Wan (通义万相)** video
+models. Four tasks share one form — text, image (first frame), keyframes (first + last
+frame) and reference (characters / clips / audio) → video — and the selected model
+re-fits every control to what it actually supports.
 
 [![Python Version](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://python.org)
-[![Gradio](https://img.shields.io/badge/gradio-5.43.1%2B-orange.svg)](https://gradio.app)
+[![Gradio](https://img.shields.io/badge/gradio-5.43%2B%20%7C%206.x-orange.svg)](https://gradio.app)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## ✨ Core Features
+## ✨ What's new in 2.0 (Oct 2026)
 
-- 🆕 **Wan 2.5 Support**: Latest models with audio generation and 10s video support
-- 🎵 **Audio Generation**: Auto-generated or custom audio for synchronized videos
-- ⏱️ **Extended Duration**: 5-10 second video generation (upgraded from 5s)
-- **🎥 Text-to-Video**: Convert text descriptions into high-quality videos
-- **🖼️ Image-to-Video**: Generate dynamic videos from a single image
-- **🎞️ Keyframe-to-Video**: Create smooth transitions between start and end frames
-- **🎨 Multiple Style Options**: Support for cinematic, anime, realistic, and other artistic styles
-- **📐 Flexible Aspect Ratios**: Support for 16:9, 1:1, 9:16 and other ratios
-- **⚙️ Advanced Settings**: Support for negative prompts, seed control, and fine-tuning
-- **🤖 Smart Model Selection**: Automatically choose optimal models based on generation mode
-- **📱 Responsive Interface**: Beautiful and user-friendly interface with real-time feedback
-- **📊 Status Tracking**: Detailed progress and error reporting
-- **☁️ OSS Integration**: Optional Alibaba Cloud OSS storage support
+**Models — aligned with Model Studio's current line-up** (full matrix: [doc/MODELS.md](doc/MODELS.md))
 
-## 🎉 What's New in Wan 2.5
+| Generation | Models | Highlights |
+|---|---|---|
+| 🆕 **Wan 3.0** | `wan3.0-video` *(default)* | All-in-one: t2v / i2v / first+last frame / reference. **2–30 s**, smart duration (`-1`), adaptive ratio, 1080P, native audio |
+| ✅ **Wan 2.7** | `wan2.7-t2v`, `wan2.7-i2v`, `wan2.7-r2v` | 2–15 s (r2v 2–10 s), 720P/1080P, 30 fps, synchronized audio, new `input.media` schema |
+| ✅ **Wan 2.6** | `wan2.6-t2v`, `wan2.6-i2v`, `wan2.6-i2v-flash`, `wan2.6-r2v(-flash)` | 2–15 s, **multi-shot** (`shot_type`), audio, Flash variants for speed |
+| 🕰️ Legacy | `wan2.5-*-preview`, `wan2.2-*`, `wanx2.1-*` | Still callable; hidden unless `WAN_SHOW_LEGACY=1` |
 
-- 🎵 **Audio Generation**: Automatically generate synchronized audio or use custom audio URLs
-- ⏰ **Longer Videos**: Create 5-10 second videos (doubled from previous 5s limit)
-- 📐 **1080P Support**: Full high-definition video output across all Wan 2.5 models
-- 📝 **Extended Prompts**: Support for up to 2000 characters (upgraded from 1000)
-- 🎬 **24fps Frame Rate**: Smoother, cinema-quality video playback
-- 🔧 **Backward Compatible**: All Wan 2.2 models remain available
+**Harness — the UI is now a thin layer over a declarative core**
 
-For detailed Wan 2.5 updates, see [WAN_2.5_UPDATE.md](WAN_2.5_UPDATE.md)
+- 🧭 **Model-driven controls** — resolution, aspect ratio, duration range, audio, multi-shot and prompt limits all come from a single registry (`src/models.py`). You cannot build a request the model will reject.
+- 🎭 **Reference → Video** task (Wan 3.0 / 2.7 / 2.6 r2v) with image uploads plus pasted video/audio URLs.
+- 🔍 **Request preview** — see the exact JSON before it is sent; **dry-run** mode (`--dry-run` / `WAN_DRY_RUN=1`) never calls the API.
+- 🕘 **Task history & resume** — every task id is persisted locally (`~/.wan_gateway`); refresh the page, click a row or paste an id to pick a result back up (URLs stay valid 24 h). Queued tasks can be cancelled.
+- 🖥️ **CLI** — `python cli.py models | generate | status | history` share the same builder and client as the UI.
+- 🌐 **Regions** — `DASHSCOPE_REGION=cn|intl` switches between Beijing and Singapore endpoints.
+- 🧱 **One client** (`src/wan_client.py`) + **one request builder** (`src/request_builder.py`) replace the three copy-pasted service submit paths; the old `TextToVideoService` / `ImageToVideoService` / `KeyFrameVideoService` classes still work and now route through the builder.
+- ✅ 45 unit / integration tests (`make test`), Gradio 5 and 6 supported.
+
+## 🧩 Architecture
+
+```
+src/models.py            ← ModelSpec registry: ids, tasks, limits, API dialect, status
+src/request_builder.py   ← GenerationRequest → exact DashScope JSON (media / label / size / kf2v / r2v)
+src/wan_client.py        ← submit / status / cancel / wait / download (region-aware)
+src/history.py           ← JSON task history used by UI + CLI
+src/gradio_app.py        ← WanStudio: dynamic form, preview, poller, history
+cli.py                   ← same core from the terminal
+```
 
 ## 🚀 Quick Start
 
@@ -66,7 +75,9 @@ For detailed Wan 2.5 updates, see [WAN_2.5_UPDATE.md](WAN_2.5_UPDATE.md)
 
 4. **Run the application**:
    ```bash
-   python main.py
+   python main.py            # studio UI
+   python main.py --dry-run  # explore the UI without an API key
+   python cli.py models      # list models from the terminal
    ```
 
 5. **Open browser** and visit `http://localhost:7860`
@@ -87,46 +98,29 @@ The demo includes:
 
 ## 📋 User Guide
 
-### 🎯 Generation Mode Selection
+### 🎯 Tasks
 
-The application supports three video generation modes:
+| Task | Inputs | Default model | Typical wait |
+|---|---|---|---|
+| 📝 Text → Video | prompt | `wan3.0-video` | 2–6 min |
+| 🖼️ Image → Video | prompt + first frame | `wan3.0-video` | 2–6 min |
+| 🎞️ Keyframes → Video | prompt + first & last frame | `wan3.0-video` (or `wan2.7-i2v`, `wan2.2-kf2v-flash`) | 2–6 min |
+| 🎭 Reference → Video | prompt + reference images / clips / audio | `wan3.0-video` (or `wan2.7-r2v`, `wan2.6-r2v`) | 3–6 min |
 
-#### 1. 📝 Text-to-Video
-- **Processing Time**: 1-2 minutes
-- **Description**: Generate videos through detailed text descriptions
-- **Available Models**: 
-  - 🆕 **wan2.5-t2v-preview** (Recommended) - Audio support, 5-10s, 1080P
-  - wan2.2-t2v-plus - Latest high-quality model
-  - wanx2.1-t2v-turbo - Fast generation
-  - wanx2.1-t2v-plus - High-quality generation
-- **Resolution Support**: 480P-1080P
-- **Features**: 
-  - 🎵 Audio generation (Wan 2.5)
-  - ⏱️ 5-10 second duration (Wan 2.5)
-  - Style control, aspect ratio
-  - Negative prompts, seed control
-  - Up to 2000 characters prompt (Wan 2.5)
+Image requirements: JPEG / PNG / BMP / WEBP, ≤ 10 MB, 360–2000 px per side. Images are
+uploaded to **your OSS bucket** and passed as signed URLs — without OSS credentials the
+app falls back to a demo image and says so in the status panel.
 
-#### 2. 🖼️ Image-to-Video  
-- **Processing Time**: 7-10 minutes
-- **Description**: Generate dynamic videos from a single image
-- **Available Models**: 
-  - 🆕 **wan2.5-i2v-preview** (Recommended) - Audio support, 5-10s, 1080P
-  - wan2.2-i2v-flash - Fastest generation
-  - wan2.2-i2v-plus - Latest high-quality
-  - wanx2.1-i2v-plus, wanx2.1-i2v-turbo
-- **Image Requirements**: JPEG/PNG/BMP/WEBP, max 10MB, 360-2000px dimensions
-- **Features**: 
-  - 🎵 Audio generation (Wan 2.5)
-  - ⏱️ 5-10 second duration (Wan 2.5)
-  - Optional text guidance, style control
+### 🖥️ CLI
 
-#### 3. 🎞️ Keyframe-to-Video
-- **Processing Time**: 7-10 minutes  
-- **Description**: Generate smooth transitions between start and end frames
-- **Available Models**: wanx2.1-kf2v-plus
-- **Requirements**: Two images with similar composition (start and end frames)
-- **Features**: Optional transition guidance, style control
+```bash
+python cli.py models --all                                  # every model, incl. legacy
+python cli.py generate --model wan3.0-video -p "a corgi surfing at sunset" --duration -1 --dry-run
+python cli.py generate --model wan2.7-i2v --task kf2v -p "slow push-in" \
+    --first-frame https://…/a.png --last-frame https://…/b.png --duration 8 --wait
+python cli.py status <task_id> --download
+python cli.py history
+```
 
 ### Basic Usage
 

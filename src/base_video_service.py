@@ -67,7 +67,7 @@ class BaseVideoService(ABC):
             'Authorization': f'Bearer {self.api_key}'
         }
         
-        poll_url = f"https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}"
+        poll_url = f"{Config.TASKS_ENDPOINT}/{task_id}"
         
         try:
             response = requests.get(

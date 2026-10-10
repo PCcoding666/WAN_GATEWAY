@@ -15,6 +15,25 @@ and adhering to [Semantic Versioning 2.0.0](https://semver.org/).
 - User account system
 - Video history management
 
+## [2.0.0] - 2026-10-10
+
+### Added
+- 🆕 **Wan 3.0** (`wan3.0-video`) as the default for every task: 2–30 s, smart duration (-1), adaptive ratio, 1080P, native audio.
+- ✅ **Wan 2.7** (`wan2.7-t2v`, `wan2.7-i2v`, `wan2.7-r2v`) and **Wan 2.6** (`wan2.6-t2v`, `wan2.6-i2v`, `wan2.6-i2v-flash`, `wan2.6-r2v`, `wan2.6-r2v-flash`) with the `input.media` / `shot_type` / `duration` 2–15 s parameters.
+- 🎭 **Reference → Video** task (images via OSS upload, video / audio via URL).
+- 📚 Declarative model registry (`src/models.py`), request builder (`src/request_builder.py`), region-aware client (`src/wan_client.py`), JSON task history (`src/history.py`).
+- 🔍 Request preview + dry-run mode (`--dry-run`, `WAN_DRY_RUN`).
+- 🕘 Task history panel with resume-by-task-id and cancel.
+- 🖥️ `cli.py` with `models`, `generate`, `status`, `history` sub-commands.
+- 🌐 `DASHSCOPE_REGION` / `DASHSCOPE_BASE_URL`; `WAN_SHOW_LEGACY`, `WAN_SHOW_DEPRECATED`, `WAN_DATA_DIR`, `WAN_DEFAULT_*_MODEL` settings.
+- 🧪 New unit tests for the builder, client and history (45 tests total).
+
+### Changed
+- UI rewritten as `WanStudio`: one form for four tasks; controls re-fit to the selected model. Works on Gradio 5 and 6.
+- Legacy services (`TextToVideoService`, `ImageToVideoService`, `KeyFrameVideoService`) now build payloads through the shared builder; `negative_prompt` / `audio_url` moved to `input` per the official schema.
+- Wan 2.5 / 2.2 models marked legacy and hidden by default; Wan 2.1 marked deprecated.
+- `oss2` is now optional at import time.
+
 ## [1.2.0] - 2024-01-08
 
 ### Added

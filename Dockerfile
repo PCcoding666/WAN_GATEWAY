@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir --upgrade pip --index-url https://pypi.tuna.tsing
 
 # Copy application source code
 COPY src/ ./src/
-COPY main.py .
+COPY main.py cli.py ./
 
 # Create directories for application data
 RUN mkdir -p /app/downloads /app/cache

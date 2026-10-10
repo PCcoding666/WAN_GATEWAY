@@ -84,7 +84,7 @@ def check_environment():
 def main():
     """Main function to run the application."""
     parser = argparse.ArgumentParser(
-        description="Gradio Bailian Text-to-Video Generator",
+        description="Wan Gateway Studio — Wan 3.0 / 2.7 / 2.6 video generation UI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -126,19 +126,38 @@ Examples:
         action="store_true",
         help="Check environment configuration and exit"
     )
+
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview requests without calling DashScope (same as WAN_DRY_RUN=1)"
+    )
+
+    parser.add_argument(
+        "--show-legacy",
+        action="store_true",
+        help="Also list Wan 2.2 / 2.5 models in the UI (same as WAN_SHOW_LEGACY=1)"
+    )
     
     args = parser.parse_args()
+
+    if args.dry_run:
+        Config.DRY_RUN = True
+    if args.show_legacy:
+        Config.SHOW_LEGACY_MODELS = True
     
     # Setup logging
     setup_logging(args.debug)
     logger = logging.getLogger(__name__)
     
-    print("🎬 Enhanced Multi-Modal Video Generator")
+    print("🎬 Wan Gateway Studio")
     print("=" * 50)
     
-    # Check environment
-    if not check_environment():
+    # Check environment (skipped in dry-run so the UI can be explored without a key)
+    if not Config.DRY_RUN and not check_environment():
         sys.exit(1)
+    elif Config.DRY_RUN:
+        print("🧪 Dry-run mode: no API calls will be made")
     
     # If only checking environment, exit here
     if args.check_env:

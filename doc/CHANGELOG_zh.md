@@ -13,6 +13,18 @@
 - 用户账户系统
 - 视频历史记录管理
 
+## [2.1.0] - 2026-10-31
+
+### 新增
+- 🖼️ **图像 Tab + `cli.py image`**：万相 2.7 Image (Pro)、万相 2.6 Image / t2i、千问 Qwen-Image 3.0 / 2.1 / 2.0、Qwen-Image-Edit —— 文生图、指令 / 参考编辑、组图（`n`）、预设或自定义 `W*H` 尺寸。
+- 🔊 **语音 Tab + `cli.py tts`**：Qwen3-TTS Flash、Qwen-Audio 3.1 TTS、CosyVoice 3.5 / 3 / 2 —— 音色、语种、风格指令、格式、采样率、语速。
+- ✂️ **视频编辑任务**：`wan2.7-videoedit` 与 `wan3.0-video`（源视频 URL + 可选参考图）。
+- `src/catalog.py`、`src/media_builder.py`、`WanClient.call_sync / submit_async / download_file`、`cli.py catalog`；新增 19 个单测（共 64 个）。
+
+### 变更
+- UI 改为 视频 / 图像 / 语音 三个 Tab；图像与语音结果同样写入历史记录。
+- 新增 `WAN_DEFAULT_IMAGE_MODEL`、`WAN_DEFAULT_IMAGE_EDIT_MODEL`、`WAN_DEFAULT_SPEECH_MODEL`；产物保存在 `~/.wan_gateway/{videos,images,audio}`。
+
 ## [2.0.0] - 2026-10-10
 
 ### 新增

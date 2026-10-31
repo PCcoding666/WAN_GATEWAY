@@ -1,7 +1,7 @@
 [project]
 name = "wan-gateway"
-version = "2.0.0"
-description = "Gradio + CLI studio for Alibaba Wan 3.0 / 2.7 / 2.6 video generation (text, image, keyframes, reference)"
+version = "2.1.0"
+description = "Gradio + CLI studio for Alibaba Cloud AIGC: Wan video (3.0/2.7/2.6), Wan & Qwen image, Qwen3-TTS & CosyVoice speech"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [

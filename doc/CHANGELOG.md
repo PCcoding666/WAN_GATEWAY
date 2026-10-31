@@ -15,6 +15,19 @@ and adhering to [Semantic Versioning 2.0.0](https://semver.org/).
 - User account system
 - Video history management
 
+## [2.1.0] - 2026-10-31
+
+### Added
+- 🖼️ **Image tab + `cli.py image`**: Wan 2.7 Image (Pro), Wan 2.6 Image / t2i, Qwen-Image 3.0 / 2.1 / 2.0, Qwen-Image-Edit — text-to-image, instruction / reference editing, image sets (`n`), size presets or free `W*H`.
+- 🔊 **Speech tab + `cli.py tts`**: Qwen3-TTS Flash, Qwen-Audio 3.1 TTS, CosyVoice 3.5 / 3 / 2 — voice, language, style instruction, format, sample rate, speed.
+- ✂️ **Edit Video task**: `wan2.7-videoedit` and `wan3.0-video` (source video URL + optional reference images).
+- `src/catalog.py` (image + speech registries), `src/media_builder.py` (payload builders), `WanClient.call_sync / submit_async / download_file`, `cli.py catalog`.
+- 19 new unit tests (64 total).
+
+### Changed
+- UI reorganised into Video / Image / Speech tabs; image and speech results are recorded in the shared history.
+- `WAN_DEFAULT_IMAGE_MODEL`, `WAN_DEFAULT_IMAGE_EDIT_MODEL`, `WAN_DEFAULT_SPEECH_MODEL` settings; results saved under `~/.wan_gateway/{videos,images,audio}`.
+
 ## [2.0.0] - 2026-10-10
 
 ### Added

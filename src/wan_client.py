@@ -82,6 +82,60 @@ class WanClient:
     def task_url(self, task_id: str) -> str:
         return f"{self.base_url}/api/v1/tasks/{task_id}"
 
+    # ------------------------------------------------------- generic calls
+    def call_sync(self, path: str, payload: Dict[str, Any], timeout: Optional[int] = None) -> Dict[str, Any]:
+        """Synchronous POST (image generation, TTS). Returns the parsed JSON."""
+        url = f"{self.base_url}{path}"
+        logger.info("POST %s model=%s (sync)", url, payload.get("model"))
+        resp = self._session.post(url, json=payload, timeout=timeout or max(self.timeout, 120))
+        data = _json_or_text(resp)
+        if resp.status_code != 200:
+            raise WanAPIError(_error_message(data, resp), code=_get(data, "code"),
+                              request_id=_get(data, "request_id"))
+        if isinstance(data, dict) and data.get("code") and not data.get("output"):
+            raise WanAPIError(_error_message(data, resp), code=data.get("code"),
+                              request_id=data.get("request_id"))
+        return data
+
+    def submit_async(self, path: str, payload: Dict[str, Any]) -> str:
+        """Asynchronous POST on any DashScope path; returns the task id."""
+        url = f"{self.base_url}{path}"
+        logger.info("POST %s model=%s (async)", url, payload.get("model"))
+        resp = self._session.post(url, json=payload, timeout=self.timeout,
+                                  headers={"X-DashScope-Async": "enable"})
+        data = _json_or_text(resp)
+        if resp.status_code != 200:
+            raise WanAPIError(_error_message(data, resp), code=_get(data, "code"),
+                              request_id=_get(data, "request_id"))
+        task_id = _get(data, "output", "task_id")
+        if not task_id:
+            raise WanAPIError(f"No task_id in response: {data}")
+        return task_id
+
+    def download_file(self, url: str, name: str, dest_dir: Optional[str] = None,
+                      default_ext: str = ".bin") -> Optional[str]:
+        """Download any result URL (image / audio / video) to ``dest_dir/name.ext``."""
+        dest_dir = dest_dir or Config.VIDEO_DIR
+        os.makedirs(dest_dir, exist_ok=True)
+        ext = os.path.splitext(urlparse(url).path)[1] or default_ext
+        local = os.path.join(dest_dir, f"{name}{ext}")
+        try:
+            with requests.get(url, stream=True, timeout=(30, 180)) as r:
+                if r.status_code != 200:
+                    logger.error("download failed HTTP %s", r.status_code)
+                    return None
+                with open(local, "wb") as fh:
+                    for chunk in r.iter_content(chunk_size=1 << 16):
+                        if chunk:
+                            fh.write(chunk)
+        except requests.RequestException as exc:
+            logger.error("download error: %s", exc)
+            return None
+        if os.path.getsize(local) == 0:
+            os.unlink(local)
+            return None
+        return local
+
     # --------------------------------------------------------------- verbs
     def submit(self, payload: Dict[str, Any], task: Optional[str] = None) -> str:
         """POST the payload asynchronously and return the DashScope ``task_id``."""

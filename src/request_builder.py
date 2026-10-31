@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from .models import (
-    I2V, KF2V, R2V, T2V, ModelSpec, get_spec, size_for,
+    I2V, KF2V, R2V, T2V, VEDIT, ModelSpec, get_spec, size_for,
 )
 
 
@@ -39,6 +39,7 @@ class GenerationRequest:
     reference_image_urls: List[str] = field(default_factory=list)
     reference_video_urls: List[str] = field(default_factory=list)
     reference_audio_urls: List[str] = field(default_factory=list)
+    input_video_url: Optional[str] = None     # clip to edit (vedit)
     # escape hatch: merged last into ``parameters`` verbatim
     extra_parameters: Dict[str, Any] = field(default_factory=dict)
 
@@ -80,6 +81,11 @@ def validate(req: GenerationRequest) -> ModelSpec:
         req.reference_image_urls or req.reference_video_urls or req.reference_audio_urls
     ):
         raise RequestValidationError("At least one reference image / video / audio is required.")
+    if req.task == VEDIT:
+        if not req.input_video_url:
+            raise RequestValidationError("A source video URL is required for video editing.")
+        if not prompt:
+            raise RequestValidationError("Describe the edit you want in the prompt.")
 
     if req.resolution and req.resolution not in spec.resolutions:
         raise RequestValidationError(
@@ -127,6 +133,8 @@ def build_payload(req: GenerationRequest) -> Dict[str, Any]:
     # ---------------------------------------------------------------- media
     if spec.dialect == "media":
         media: List[Dict[str, str]] = []
+        if req.input_video_url:
+            media.append({"type": spec.video_media_type, "url": req.input_video_url})
         if req.first_frame_url:
             media.append({"type": "first_frame", "url": req.first_frame_url})
         if req.last_frame_url:

@@ -15,6 +15,17 @@ and adhering to [Semantic Versioning 2.0.0](https://semver.org/).
 - User account system
 - Video history management
 
+## [2.2.0] - 2026-10-31
+
+### Added
+- GitHub Actions **CI** (`ci.yml`): pytest, byte-compile, dry-run smoke of UI/CLI/demo, Docker build + boot probe.
+- GitHub Actions **Deploy to production** (`deploy.yml`): Artifact Registry push + Cloud Run deploy + smoke test; skips with a notice when `GCP_PROJECT_ID` / `GCP_SA_KEY` / `DASHSCOPE_API_KEY` secrets are missing; manual run with `image_tag` for rollback.
+- `.dockerignore`; `docker-compose.yml` passes region / OSS / dry-run variables and mounts `./data`.
+
+### Changed
+- Dockerfile: Python 3.13, builds `crcmod` for `oss2` with a temporary toolchain, non-root user, `HEALTHCHECK`, honours `$PORT`.
+- `main.py` reads `HOST` / `PORT` from the environment.
+
 ## [2.1.0] - 2026-10-31
 
 ### Added

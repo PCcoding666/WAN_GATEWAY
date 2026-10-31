@@ -358,33 +358,45 @@ docker build --no-cache -t wan-gateway .
 docker inspect wan-gateway
 ```
 
-## 🚀 自动化部署
+## 🚀 自动化部署（GitHub Actions）
 
-### CI/CD 流水线示例 (GitHub Actions)
+仓库自带两个工作流：
 
-**.github/workflows/deploy.yml**:
-```yaml
-name: Deploy to Production
+| 工作流 | 文件 | 触发 | 做什么 |
+|---|---|---|---|
+| **CI** | `.github/workflows/ci.yml` | 每次 push / PR | 安装依赖、编译检查、`pytest`、UI + CLI + demo 的 dry-run 冒烟、构建并启动 Docker 镜像 |
+| **Deploy to production** | `.github/workflows/deploy.yml` | `main` 上 CI 成功后，或手动 *Run workflow* | 构建镜像 → 推到 Artifact Registry → 部署 **Cloud Run** → 探活 |
 
-on:
-  push:
-    branches: [ main ]
+### 一次性配置
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v2
-    
-    - name: Build Docker image
-      run: docker build -t wan-gateway:latest .
-    
-    - name: Deploy to server
-      run: |
-        # 这里添加你的部署逻辑
-        # 例如推送到容器注册表，然后部署到服务器
-        echo "Deploying to production..."
+1. 建一个 Google Cloud 项目和服务账号（角色：**Cloud Run Admin**、**Artifact Registry Writer**、**Service Account User**），下载 JSON 密钥。
+2. 在 GitHub *Settings → Secrets and variables → Actions* 添加：
+
+   | Secret | 必填 | 值 |
+   |---|---|---|
+   | `GCP_PROJECT_ID` | ✅ | 项目 id |
+   | `GCP_SA_KEY` | ✅ | 服务账号 JSON 密钥 |
+   | `DASHSCOPE_API_KEY` | ✅ | 百炼 API key |
+   | `DASHSCOPE_REGION` | – | `cn`（默认）或 `intl` |
+   | `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`、`OSS_ENDPOINT`、`OSS_BUCKET_NAME` | – | 图生 / 首尾帧 / 参考任务上传图片需要 |
+   | `WAN_UI_AUTH` | – | `user:password[,user2:password2]`，给 UI 加登录框 |
+
+   可选 *Variables*：`GCP_REGION`（默认 `us-central1`）、`CLOUD_RUN_SERVICE`（默认 `wan-gateway`）、
+   `CLOUD_RUN_PUBLIC`（`true` 允许匿名访问；默认受 IAM 保护）。
+3. 推送到 `main`（或手动运行 *Deploy to production*）。三个必填 secret 不齐时，部署 job 会**跳过并在摘要里提示**，CI 仍为绿色。
+
+**访问控制。** 默认服务受 IAM 保护，只有被授予 `roles/run.invoker` 的身份能访问（工作流的探活用服务账号的 identity token）。
+要对外公开，把仓库变量 `CLOUD_RUN_PUBLIC` 设为 `true`，**同时**设置 `WAN_UI_AUTH` 让 UI 要求登录 —— 这个界面每点一次都在花你的百炼额度。
+
+运行摘要里会给出 Cloud Run URL。回滚：手动运行工作流，把 `image_tag` 设为旧的 commit sha（每个镜像都带 sha 和 `latest` 标签）。
+
+### 本地等价操作
+
+```bash
+docker build -t wan-gateway .
+docker run -p 7860:7860 -e DASHSCOPE_API_KEY=sk-... wan-gateway
+# 或
+docker compose up -d
 ```
 
 ## 📝 维护清单

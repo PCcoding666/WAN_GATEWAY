@@ -12,7 +12,12 @@ services:
       - "7860:7860"
     environment:
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - DASHSCOPE_REGION=${DASHSCOPE_REGION:-cn}
+      - OSS_ACCESS_KEY_ID=${OSS_ACCESS_KEY_ID:-}
+      - OSS_ACCESS_KEY_SECRET=${OSS_ACCESS_KEY_SECRET:-}
+      - OSS_ENDPOINT=${OSS_ENDPOINT:-https://oss-cn-hangzhou.aliyuncs.com}
+      - OSS_BUCKET_NAME=${OSS_BUCKET_NAME:-}
+      - WAN_DRY_RUN=${WAN_DRY_RUN:-0}
       - PYTHONPATH=/app
     volumes:
-      - ./downloads:/app/downloads
-      - ./cache:/app/cache
+      - ./data:/app/data

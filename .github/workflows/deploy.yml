@@ -1,0 +1,189 @@
+name: Deploy to production (Cloud Run)
+
+# Runs on every push to main (after the CI workflow succeeds) and on demand.
+#
+# Required repository secrets
+#   GCP_PROJECT_ID       Google Cloud project id
+#   GCP_SA_KEY           JSON key of a service account with roles:
+#                        run.admin, artifactregistry.writer, iam.serviceAccountUser
+#   DASHSCOPE_API_KEY    Alibaba Cloud Model Studio key
+# Optional secrets
+#   DASHSCOPE_REGION     cn (default) | intl
+#   OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_ENDPOINT, OSS_BUCKET_NAME
+#   WAN_UI_AUTH          "user:password[,user2:password2]" — Gradio login gate
+# Optional repository variables
+#   GCP_REGION           default us-central1
+#   CLOUD_RUN_SERVICE    default wan-gateway
+#   CLOUD_RUN_PUBLIC     "true" to expose the service to unauthenticated callers.
+#                        Default is IAM-protected (only identities with
+#                        roles/run.invoker can reach it). When you do make it
+#                        public, set WAN_UI_AUTH so the UI itself asks for a login.
+#
+# When GCP_PROJECT_ID / GCP_SA_KEY are missing the deploy job is skipped
+# (green, with a notice in the run summary) instead of failing.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (default: commit sha)"
+        required: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+  SERVICE: ${{ vars.CLOUD_RUN_SERVICE || 'wan-gateway' }}
+
+jobs:
+  preflight:
+    name: Check deploy configuration
+    runs-on: ubuntu-latest
+    # workflow_run fires for failed CI too; only continue on success (or manual)
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - id: check
+        env:
+          PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+          SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+        run: |
+          missing=""
+          [ -z "$PROJECT" ] && missing="$missing GCP_PROJECT_ID"
+          [ -z "$SA_KEY" ]  && missing="$missing GCP_SA_KEY"
+          [ -z "$API_KEY" ] && missing="$missing DASHSCOPE_API_KEY"
+          if [ -n "$missing" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## ⏭️ Deploy skipped"
+              echo
+              echo "Missing repository secrets:**$missing**"
+              echo
+              echo "Add them under *Settings → Secrets and variables → Actions*, then re-run this workflow"
+              echo "or push to \`main\` again. See \`doc/DEPLOYMENT.md\` → *CI/CD*."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: Build · push · deploy
+    needs: preflight
+    if: needs.preflight.outputs.configured == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Enable APIs and ensure Artifact Registry repo
+        run: |
+          gcloud services enable run.googleapis.com artifactregistry.googleapis.com --quiet
+          gcloud artifacts repositories describe "$SERVICE" --location "$GCP_REGION" >/dev/null 2>&1 || \
+          gcloud artifacts repositories create "$SERVICE" --repository-format docker \
+            --location "$GCP_REGION" --description "Wan Gateway images" --quiet
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+
+      - name: Compute image name
+        id: img
+        env:
+          PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          TAG="${{ github.event.inputs.image_tag }}"
+          [ -z "$TAG" ] && TAG="${{ github.event.workflow_run.head_sha || github.sha }}"
+          BASE="$GCP_REGION-docker.pkg.dev/$PROJECT/$SERVICE/$SERVICE"
+          echo "image=$BASE:$TAG" >> "$GITHUB_OUTPUT"
+          echo "latest=$BASE:latest" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.img.outputs.image }}
+            ${{ steps.img.outputs.latest }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.GCP_REGION }}
+          image: ${{ steps.img.outputs.image }}
+          flags: >-
+            ${{ vars.CLOUD_RUN_PUBLIC == 'true' && '--allow-unauthenticated' || '--no-allow-unauthenticated' }}
+            --port=7860
+            --memory=1Gi
+            --cpu=1
+            --min-instances=0
+            --max-instances=10
+            --timeout=300
+          env_vars: |
+            WAN_UI_AUTH=${{ secrets.WAN_UI_AUTH }}
+            DASHSCOPE_API_KEY=${{ secrets.DASHSCOPE_API_KEY }}
+            DASHSCOPE_REGION=${{ secrets.DASHSCOPE_REGION || 'cn' }}
+            OSS_ACCESS_KEY_ID=${{ secrets.OSS_ACCESS_KEY_ID }}
+            OSS_ACCESS_KEY_SECRET=${{ secrets.OSS_ACCESS_KEY_SECRET }}
+            OSS_ENDPOINT=${{ secrets.OSS_ENDPOINT || 'https://oss-cn-hangzhou.aliyuncs.com' }}
+            OSS_BUCKET_NAME=${{ secrets.OSS_BUCKET_NAME }}
+            WAN_DATA_DIR=/tmp/wan_gateway
+
+      - name: Smoke test
+        env:
+          PUBLIC: ${{ vars.CLOUD_RUN_PUBLIC }}
+        run: |
+          URL="${{ steps.deploy.outputs.url }}"
+          # IAM-protected services answer 403 to anonymous callers; use an identity token.
+          AUTH=""
+          if [ "$PUBLIC" != "true" ]; then
+            AUTH="Authorization: Bearer $(gcloud auth print-identity-token)"
+          fi
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" ${AUTH:+-H "$AUTH"} "$URL/" || true)
+            if [ "$code" = "200" ]; then echo "✅ $URL answered 200"; break; fi
+            sleep 5
+          done
+          [ "$code" = "200" ] || { echo "❌ $URL returned $code"; exit 1; }
+          {
+            echo "## 🚀 Deployed"
+            echo
+            echo "- Service: \`$SERVICE\` (\`$GCP_REGION\`)"
+            echo "- Image: \`${{ steps.img.outputs.image }}\`"
+            echo "- URL: $URL"
+            if [ "$PUBLIC" = "true" ]; then
+              echo "- Access: public (CLOUD_RUN_PUBLIC=true)"
+            else
+              echo "- Access: IAM-protected. Grant roles/run.invoker to users, or set the"
+              echo "  repository variable CLOUD_RUN_PUBLIC=true (and the WAN_UI_AUTH secret) and re-run."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

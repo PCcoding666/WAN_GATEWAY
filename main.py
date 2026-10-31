@@ -98,15 +98,15 @@ Examples:
     
     parser.add_argument(
         "--host",
-        default="127.0.0.1",
-        help="Host to bind the server to (default: 127.0.0.1)"
+        default=os.getenv("HOST", "127.0.0.1"),
+        help="Host to bind the server to (default: $HOST or 127.0.0.1)"
     )
-    
+
     parser.add_argument(
         "--port",
         type=int,
-        default=7860,
-        help="Port to run the server on (default: 7860)"
+        default=int(os.getenv("PORT", "7860")),
+        help="Port to run the server on (default: $PORT or 7860)"
     )
     
     parser.add_argument(

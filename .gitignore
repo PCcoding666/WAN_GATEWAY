@@ -6,7 +6,6 @@
 *.key
 
 # Docker
-.dockerignore
 docker-compose.override.yml
 
 # Python

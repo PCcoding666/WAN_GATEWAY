@@ -6,6 +6,14 @@
 [![Gradio](https://img.shields.io/badge/gradio-5.43.1%2B-orange.svg)](https://gradio.app)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+## ✨ 2.1 新特性：图像、语音、视频编辑
+
+- 🖼️ **图像 Tab**：`wan2.7-image-pro`（最高 4K、组图、多图参考）、`wan2.7-image`、`qwen-image-3.0-pro`（文字渲染旗舰、保 ID 编辑）、`qwen-image-2.1-pro/turbo`、`wan2.6-image`、`wan2.6-t2i`，以及 legacy 的 `qwen-image-2.0*`、`qwen-image-edit-plus`、`wan2.5/2.2-t2i-*`。放入图片即切换为编辑模式。
+- 🔊 **语音 Tab**：`qwen3-tts-flash`（49 音色 / 10 语种）、`qwen-audio-3.1-tts-plus/flash`、`cosyvoice-v3.5-plus/flash`、`cosyvoice-v3-plus/flash`、`cosyvoice-v2`；支持音色、语种、风格指令、格式、采样率、语速。
+- ✂️ **视频编辑任务**：`wan2.7-videoedit`（2–10 s，指令 + 参考图）与 `wan3.0-video`（以参考视频方式编辑）。
+- 🧱 与视频同一套 harness：`src/catalog.py` 注册表、`src/media_builder.py` 构建器、同一个 `WanClient`、请求预览、dry-run、历史记录，CLI 新增 `image` / `tts` / `catalog`。
+- 未纳入：音乐生成、`wan2.2-animate`（撰写时未在百炼公开 API 中找到）。文本大模型仅用于 ✨ 提示词增强。
+
 ## ✨ 2.0 新特性（2026-10）
 
 - 🆕 **模型对齐百炼最新一代**：默认 `wan3.0-video`（全能型，文/图/首尾帧/参考生视频，2–30 s，智能时长 `-1`，自适应比例，原生音频）；新增 `wan2.7-t2v / i2v / r2v`（2–15 s，新 `input.media` 结构）与 `wan2.6-*`（多镜头 `shot_type`、Flash 版）。2.5 / 2.2 / 2.1 保留为 legacy，`WAN_SHOW_LEGACY=1` 显示。完整矩阵见 [MODELS.md](MODELS.md)。

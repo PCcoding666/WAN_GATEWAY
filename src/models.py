@@ -38,14 +38,16 @@ T2V = "t2v"      # text -> video
 I2V = "i2v"      # first frame image -> video
 KF2V = "kf2v"    # first + last frame -> video
 R2V = "r2v"      # reference images / videos / audio -> video
+VEDIT = "vedit"  # existing video + instruction (+ reference images) -> edited video
 
-TASKS: Tuple[str, ...] = (T2V, I2V, KF2V, R2V)
+TASKS: Tuple[str, ...] = (T2V, I2V, KF2V, R2V, VEDIT)
 
 TASK_LABELS: Dict[str, str] = {
     T2V: "📝 Text → Video",
     I2V: "🖼️ Image → Video",
     KF2V: "🎞️ Keyframes → Video",
     R2V: "🎭 Reference → Video",
+    VEDIT: "✂️ Edit Video",
 }
 
 TASK_DESCRIPTIONS: Dict[str, str] = {
@@ -53,6 +55,7 @@ TASK_DESCRIPTIONS: Dict[str, str] = {
     I2V: "Animate a single image (used as the first frame).",
     KF2V: "Interpolate between a start frame and an end frame.",
     R2V: "Keep characters / style consistent from reference images, clips or audio.",
+    VEDIT: "Restyle or change an existing clip with an instruction (optionally guided by reference images).",
 }
 
 ALL_RATIOS: Tuple[str, ...] = ("16:9", "9:16", "1:1", "4:3", "3:4")
@@ -94,6 +97,8 @@ class ModelSpec:
     description: str = ""
     eta: str = "1-3 min"
     notes: Tuple[str, ...] = field(default_factory=tuple)
+    # ``input.media`` type used for the clip being edited (media dialect only)
+    video_media_type: str = "reference_video"
 
     # ---- convenience -----------------------------------------------------
     @property
@@ -147,7 +152,7 @@ _SPECS: List[ModelSpec] = [
     ModelSpec(
         id="wan3.0-video",
         family="3.0",
-        tasks=(T2V, I2V, KF2V, R2V),
+        tasks=(T2V, I2V, KF2V, R2V, VEDIT),
         dialect="media",
         resolutions=("480P", "720P", "1080P"),
         ratios=ALL_RATIOS + ("adaptive",),
@@ -200,6 +205,22 @@ _SPECS: List[ModelSpec] = [
         description="Wan 2.7 reference-to-video. Character / style consistency from up to "
                     "several reference images or clips, single or multi-shot.",
         eta="3-6 min",
+    ),
+    ModelSpec(
+        id="wan2.7-videoedit",
+        family="2.7",
+        tasks=(VEDIT,),
+        dialect="media",
+        resolutions=("720P", "1080P"),
+        ratios=ALL_RATIOS,
+        duration_min=2, duration_max=10, default_duration=5,
+        fps=30, audio=True,
+        video_media_type="video",
+        status="stable",
+        description="Wan 2.7 video edit: instruction-based editing and style transfer of an "
+                    "existing clip, optionally guided by reference images. 2-10 s output.",
+        eta="3-6 min",
+        notes=("Output length follows the duration you set (2-10 s).",),
     ),
     # ------------------------------------------------------------------ 2.6
     ModelSpec(
@@ -372,6 +393,7 @@ DEFAULT_MODEL_FOR_TASK: Dict[str, str] = {
     I2V: "wan3.0-video",
     KF2V: "wan3.0-video",
     R2V: "wan3.0-video",
+    VEDIT: "wan3.0-video",
 }
 
 

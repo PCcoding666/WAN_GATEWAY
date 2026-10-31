@@ -38,6 +38,8 @@ class Config:
     # Local data: task history + downloaded videos (survive page refreshes)
     DATA_DIR = os.path.expanduser(os.getenv('WAN_DATA_DIR', '~/.wan_gateway'))
     VIDEO_DIR = os.path.join(DATA_DIR, 'videos')
+    IMAGE_DIR = os.path.join(DATA_DIR, 'images')
+    AUDIO_DIR = os.path.join(DATA_DIR, 'audio')
     HISTORY_FILE = os.path.join(DATA_DIR, 'history.json')
     HISTORY_LIMIT = int(os.getenv('WAN_HISTORY_LIMIT', '50'))
 
@@ -97,6 +99,7 @@ class Config:
                 _models.I2V: "image_to_video",
                 _models.KF2V: "keyframe_to_video",
                 _models.R2V: "reference_to_video",
+                _models.VEDIT: "video_edit",
             }[spec.tasks[0]] if spec.id != "wan3.0-video" else "text_to_video",
             "tasks": list(spec.tasks),
             "supports_audio": spec.audio,
@@ -137,6 +140,10 @@ class Config:
     DEFAULT_KEYFRAME_TO_VIDEO_MODEL = os.getenv('WAN_DEFAULT_KF2V_MODEL', _models.default_model_for_task(_models.KF2V))
     DEFAULT_REFERENCE_TO_VIDEO_MODEL = os.getenv('WAN_DEFAULT_R2V_MODEL', _models.default_model_for_task(_models.R2V))
     
+    DEFAULT_IMAGE_MODEL = os.getenv('WAN_DEFAULT_IMAGE_MODEL', 'wan2.7-image-pro')
+    DEFAULT_IMAGE_EDIT_MODEL = os.getenv('WAN_DEFAULT_IMAGE_EDIT_MODEL', 'qwen-image-3.0-pro')
+    DEFAULT_SPEECH_MODEL = os.getenv('WAN_DEFAULT_SPEECH_MODEL', 'qwen3-tts-flash')
+
     # Duration / audio defaults (per-model limits live in src/models.py)
     DEFAULT_DURATION = 5
     DURATION_OPTIONS = [5, 10]  # kept for Wan 2.5 callers

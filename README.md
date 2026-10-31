@@ -1,15 +1,30 @@
 [查看中文文档](doc/README_zh.md)
 
-# 🎬 Wan Gateway Studio — Wan 3.0 / 2.7 / 2.6 video generation
+# 🎬 Wan Gateway Studio — Alibaba Cloud AIGC in one place
 
-A Gradio studio **and** a CLI for Alibaba Cloud Model Studio's **Wan (通义万相)** video
-models. Four tasks share one form — text, image (first frame), keyframes (first + last
-frame) and reference (characters / clips / audio) → video — and the selected model
-re-fits every control to what it actually supports.
+A Gradio studio **and** a CLI for Alibaba Cloud Model Studio's generative models:
+
+| Tab | Models | Tasks |
+|---|---|---|
+| 🎬 **Video** | Wan 3.0 · Wan 2.7 · Wan 2.6 (+ legacy 2.5 / 2.2) | text, image (first frame), keyframes, reference, **edit** → video |
+| 🖼️ **Image** | Wan 2.7 Image (Pro) · Wan 2.6 Image / t2i · Qwen-Image 3.0 / 2.1 / 2.0 · Qwen-Image-Edit | text → image, instruction / reference editing, image sets |
+| 🔊 **Speech** | Qwen3-TTS Flash · Qwen-Audio 3.1 TTS · CosyVoice 3.5 / 3 / 2 | text → speech, style instructions, cloned voices |
+
+Every tab follows the same rule: the selected model re-fits every control to what it
+actually supports, the exact request JSON is one click away, and nothing is sent in
+dry-run mode.
 
 [![Python Version](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://python.org)
 [![Gradio](https://img.shields.io/badge/gradio-5.43%2B%20%7C%206.x-orange.svg)](https://gradio.app)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+## ✨ What's new in 2.1 — image, speech and video editing
+
+- 🖼️ **Image tab**: `wan2.7-image-pro` (up to 4K, image sets, multi-image reference), `wan2.7-image`, `qwen-image-3.0-pro` (flagship text rendering, identity-preserving edits), `qwen-image-2.1-pro/turbo`, `wan2.6-image`, `wan2.6-t2i`, plus legacy `qwen-image-2.0*`, `qwen-image-edit-plus`, `wan2.5/2.2-t2i-*`. Drop images in to switch from generation to editing.
+- 🔊 **Speech tab**: `qwen3-tts-flash` (49 voices, 10 languages), `qwen-audio-3.1-tts-plus/flash`, `cosyvoice-v3.5-plus/flash`, `cosyvoice-v3-plus/flash`, `cosyvoice-v2` — voice, language, style instruction, format, sample rate, speed.
+- ✂️ **Edit Video** task: `wan2.7-videoedit` (2–10 s, instruction + reference images) and `wan3.0-video` (edit via reference video).
+- 🧱 Same harness as video: `src/catalog.py` (image + speech registry), `src/media_builder.py` (payloads), one `WanClient` with sync / async calls, request preview, dry-run, history, CLI `image` / `tts` / `catalog`.
+- Not included (not found on Model Studio as public APIs at the time of writing): music generation, `wan2.2-animate`. Text LLMs are used only behind the ✨ Enhance button.
 
 ## ✨ What's new in 2.0 (Oct 2026)
 
@@ -36,11 +51,13 @@ re-fits every control to what it actually supports.
 ## 🧩 Architecture
 
 ```
-src/models.py            ← ModelSpec registry: ids, tasks, limits, API dialect, status
-src/request_builder.py   ← GenerationRequest → exact DashScope JSON (media / label / size / kf2v / r2v)
-src/wan_client.py        ← submit / status / cancel / wait / download (region-aware)
+src/models.py            ← video ModelSpec registry: ids, tasks, limits, API dialect, status
+src/catalog.py           ← image + speech registries (sizes, n, input images, voices, formats)
+src/request_builder.py   ← GenerationRequest → exact video JSON (media / label / size / kf2v / r2v)
+src/media_builder.py     ← ImageRequest / SpeechRequest → (path, JSON, is_async)
+src/wan_client.py        ← submit / status / cancel / wait / download + call_sync / submit_async
 src/history.py           ← JSON task history used by UI + CLI
-src/gradio_app.py        ← WanStudio: dynamic form, preview, poller, history
+src/gradio_app.py        ← WanStudio: Video / Image / Speech tabs, preview, poller, history
 cli.py                   ← same core from the terminal
 ```
 
@@ -114,6 +131,12 @@ app falls back to a demo image and says so in the status panel.
 ### 🖥️ CLI
 
 ```bash
+python cli.py catalog --all                                 # image + speech models
+python cli.py image --model wan2.7-image-pro -p "a fox in a teacup" --n 2 --size 2K --download
+python cli.py image --model qwen-image-3.0-pro -p "make it night" --image https://…/a.png
+python cli.py tts --model qwen3-tts-flash --text "你好，世界" --voice Cherry --language Chinese --download
+python cli.py tts --model cosyvoice-v3-flash --text "..." --instructions "whisper" --format mp3
+python cli.py generate --model wan2.7-videoedit --task vedit -p "anime style" --dry-run   # video edit (see --help)
 python cli.py models --all                                  # every model, incl. legacy
 python cli.py generate --model wan3.0-video -p "a corgi surfing at sunset" --duration -1 --dry-run
 python cli.py generate --model wan2.7-i2v --task kf2v -p "slow push-in" \

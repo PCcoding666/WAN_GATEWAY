@@ -22,8 +22,12 @@ dry-run mode.
 
 ## 🚀 Deploy
 
-Push to `main` → **CI** (tests, dry-run smoke, Docker build) → **Deploy to production** (Artifact Registry → Cloud Run → smoke test).
-Set the `GCP_PROJECT_ID`, `GCP_SA_KEY` and `DASHSCOPE_API_KEY` repository secrets once; until then the deploy job is skipped with a notice. Details: [doc/DEPLOYMENT.md](doc/DEPLOYMENT.md#-automated-deployment-github-actions).
+Push to `main` → **CI** (tests, dry-run smoke, Docker build) → **Deploy to production**:
+the image is published to `ghcr.io/pccoding666/wan_gateway:<sha>` / `:latest`, and, if the
+`PROD_SSH_HOST` / `PROD_SSH_USER` / `PROD_SSH_KEY` / `DASHSCOPE_API_KEY` secrets exist, the workflow
+SSHes into your server and restarts the container from it. Without them the server step is skipped
+with a notice and you can run `production/deploy.sh` on any Docker host. Details:
+[doc/DEPLOYMENT.md](doc/DEPLOYMENT.md#-automated-deployment-github-actions).
 
 ## ✨ What's new in 2.1 — image, speech and video editing
 

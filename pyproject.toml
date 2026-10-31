@@ -1,7 +1,7 @@
 [project]
 name = "wan-gateway"
-version = "1.2.0"
-description = "A comprehensive Gradio-based multi-modal video generation application using Alibaba Bailian APIs"
+version = "2.0.0"
+description = "Gradio + CLI studio for Alibaba Wan 3.0 / 2.7 / 2.6 video generation (text, image, keyframes, reference)"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -25,7 +25,7 @@ classifiers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "gradio>=5.43.1",
+    "gradio>=5.43.1,<7",
     "requests>=2.28.0", 
     "python-dotenv>=1.0.0",
     "dashscope>=1.14.0",
@@ -42,6 +42,7 @@ Issues = "https://github.com/PCcoding666/WAN_GATEWAY/issues"
 
 [project.scripts]
 wan-gateway = "main:main"
+wan = "cli:main"
 
 [build-system]
 requires = ["hatchling"]

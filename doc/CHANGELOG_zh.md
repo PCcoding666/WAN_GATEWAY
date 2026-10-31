@@ -13,6 +13,21 @@
 - 用户账户系统
 - 视频历史记录管理
 
+## [2.0.0] - 2026-10-10
+
+### 新增
+- 🆕 **Wan 3.0**（`wan3.0-video`）成为所有任务默认模型：2–30 s、智能时长（-1）、自适应比例、1080P、原生音频。
+- ✅ **Wan 2.7**（`wan2.7-t2v / i2v / r2v`）与 **Wan 2.6**（`wan2.6-t2v / i2v / i2v-flash / r2v / r2v-flash`），支持 `input.media`、`shot_type`、2–15 s 时长。
+- 🎭 **参考生视频** 任务；🔍 请求预览 + dry-run；🕘 任务历史、按 id 恢复、取消排队任务。
+- 📚 声明式模型注册表 `src/models.py`、请求构建器 `src/request_builder.py`、地域感知客户端 `src/wan_client.py`、历史存储 `src/history.py`。
+- 🖥️ `cli.py`：`models | generate | status | history`。
+- 🌐 `DASHSCOPE_REGION` 等新环境变量，见 `.env.example`。
+
+### 变更
+- UI 重写为 `WanStudio`：四个任务共用一个表单，控件随模型自适应；兼容 Gradio 5 / 6。
+- 旧服务类改为经由统一构建器生成请求；`negative_prompt` / `audio_url` 按官方结构移入 `input`。
+- Wan 2.5 / 2.2 标记为 legacy 默认隐藏，Wan 2.1 标记为 deprecated；`oss2` 变为可选依赖。
+
 ## [1.2.0] - 2024-01-08
 
 ### 新增

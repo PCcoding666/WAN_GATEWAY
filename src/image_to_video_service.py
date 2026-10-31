@@ -15,6 +15,8 @@ from .config import Config
 from .base_video_service import BaseVideoService
 from .text_to_video_service import VideoResult
 from .oss_service import oss_service
+from .request_builder import GenerationRequest, build_payload
+from .models import I2V, get_spec
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -50,10 +52,11 @@ class ImageToVideoService(BaseVideoService):
         image_file,
         prompt: str = "",
         style: str = Config.DEFAULT_STYLE,
-        model: str = "wan2.5-i2v-preview",
+        model: str = Config.DEFAULT_IMAGE_TO_VIDEO_MODEL,
         duration: int = Config.DEFAULT_DURATION,
         audio_enabled: bool = Config.DEFAULT_AUDIO_ENABLED,
-        audio_url: Optional[str] = None
+        audio_url: Optional[str] = None,
+        resolution: Optional[str] = None,
     ) -> VideoResult:
         """
         Generate video from a single image.
@@ -96,7 +99,8 @@ class ImageToVideoService(BaseVideoService):
                 model=model,
                 duration=duration,
                 audio_enabled=audio_enabled,
-                audio_url=audio_url
+                audio_url=audio_url,
+                resolution=resolution,
             )
             
             logger.info(f"Initiating image-to-video generation...")
@@ -182,9 +186,9 @@ class ImageToVideoService(BaseVideoService):
         if prompt and len(prompt.strip()) > max_length:
             return f"Prompt too long. Maximum {max_length} characters allowed for model {model}"
         
-        # Validate duration for Wan 2.5 models
-        if Config.supports_audio(model) and duration not in Config.DURATION_OPTIONS:
-            return f"Invalid duration. Must be one of: {', '.join(map(str, Config.DURATION_OPTIONS))} seconds"
+        spec = get_spec(model)
+        if duration != -1 and not (spec.duration_min <= int(duration) <= spec.duration_max):
+            return f"Invalid duration. {model} accepts {spec.duration_label}"
         
         return None
     
@@ -245,68 +249,29 @@ class ImageToVideoService(BaseVideoService):
         self,
         public_image_url: str,
         prompt: Optional[str] = None,
-        model: str = "wan2.5-i2v-preview",
+        model: str = Config.DEFAULT_IMAGE_TO_VIDEO_MODEL,
         duration: int = Config.DEFAULT_DURATION,
         audio_enabled: bool = Config.DEFAULT_AUDIO_ENABLED,
-        audio_url: Optional[str] = None
+        audio_url: Optional[str] = None,
+        resolution: Optional[str] = None,
+        shot_type: Optional[str] = None,
     ) -> dict:
-        """
-        Build API request payload for image-to-video generation using public URL.
-        
-        Args:
-            public_image_url: Public URL of the uploaded image
-            prompt: Optional text prompt
-            model: Model to use for generation
-            duration: Video duration in seconds (for Wan 2.5)
-            audio_enabled: Enable automatic audio generation (for Wan 2.5)
-            audio_url: Optional custom audio URL (for Wan 2.5)
-            
-        Returns:
-            dict: Formatted request payload
-        """
-        # Get supported resolutions for the model
-        supported_resolutions = Config.get_supported_resolutions_for_model(model)
-        
-        # Choose appropriate resolution based on model capabilities
-        if "1080P" in supported_resolutions:
-            resolution = "1080P"
-        elif "720P" in supported_resolutions:
-            resolution = "720P"
-        elif "480P" in supported_resolutions:
-            resolution = "480P"
-        else:
-            resolution = supported_resolutions[0] if supported_resolutions else "480P"
-        
-        request_data = {
-            "model": model,
-            "input": {
-                "img_url": public_image_url
-            },
-            "parameters": {
-                "resolution": resolution,
-                "prompt_extend": True
-            }
-        }
-        
-        # Add optional prompt
-        if prompt and prompt.strip():
-            request_data["input"]["prompt"] = prompt.strip()
-        
-        # Add Wan 2.5 specific parameters
-        if Config.supports_audio(model):
-            request_data["parameters"]["duration"] = duration
-            request_data["parameters"]["audio"] = audio_enabled
-            
-            # Add custom audio URL if provided
-            if audio_url and audio_url.strip():
-                request_data["parameters"]["audio_url"] = audio_url.strip()
-        
-        logger.info(f"Using model: {model}, resolution: {resolution}")
-        if Config.supports_audio(model):
-            logger.info(f"Duration: {duration}s, Audio: {audio_enabled}")
-        logger.info(f"Image URL: {public_image_url}")
-        
-        return request_data
+        """Build the payload through the shared request builder."""
+        req = GenerationRequest(
+            model=model,
+            task=I2V,
+            prompt=prompt or "",
+            resolution=resolution,
+            duration=duration,
+            audio=audio_enabled,
+            audio_url=audio_url,
+            shot_type=shot_type,
+            prompt_extend=True,
+            first_frame_url=public_image_url,
+        )
+        payload = build_payload(req)
+        logger.info(f"Using model: {model}, parameters: {payload['parameters']}")
+        return payload
     
     def _submit_task(self, request_data: dict) -> dict:
         """

@@ -9,7 +9,10 @@ import time
 import logging
 from typing import Optional, Tuple
 from PIL import Image
-import oss2
+try:  # oss2 is optional: without it we fall back to the demo image
+    import oss2
+except ImportError:  # pragma: no cover
+    oss2 = None
 from .config import Config
 
 logger = logging.getLogger(__name__)
@@ -19,8 +22,11 @@ class OSSService:
     
     def __init__(self):
         """Initialize OSS service with configuration."""
-        if not Config.OSS_ENABLE:
-            logger.warning("OSS is not fully configured. Using fallback to demo image.")
+        if not Config.OSS_ENABLE or oss2 is None:
+            if oss2 is None:
+                logger.warning("oss2 package not installed. Using fallback to demo image.")
+            else:
+                logger.warning("OSS is not fully configured. Using fallback to demo image.")
             self.enabled = False
             return
             

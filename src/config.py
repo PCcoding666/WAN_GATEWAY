@@ -7,6 +7,8 @@ import os
 from dotenv import load_dotenv
 from typing import List, Optional
 
+from . import models as _models
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -22,23 +24,49 @@ class Config:
     OSS_ENDPOINT = os.getenv('OSS_ENDPOINT', 'https://oss-cn-hangzhou.aliyuncs.com')
     OSS_BUCKET_NAME = os.getenv('OSS_BUCKET_NAME', 'wan-gateway-images')
     OSS_ENABLE = all([OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_BUCKET_NAME])
+
+    # DashScope region. ``cn`` (Beijing, default) or ``intl`` (Singapore).
+    # DASHSCOPE_BASE_URL overrides the host completely.
+    DASHSCOPE_REGION = os.getenv('DASHSCOPE_REGION', 'cn').lower()
+    _REGION_HOSTS = {
+        'cn': 'https://dashscope.aliyuncs.com',
+        'intl': 'https://dashscope-intl.aliyuncs.com',
+    }
+    DASHSCOPE_BASE_URL = os.getenv('DASHSCOPE_BASE_URL', _REGION_HOSTS.get(DASHSCOPE_REGION, _REGION_HOSTS['cn']))
+    TASKS_ENDPOINT = f"{DASHSCOPE_BASE_URL}/api/v1/tasks"
+
+    # Local data: task history + downloaded videos (survive page refreshes)
+    DATA_DIR = os.path.expanduser(os.getenv('WAN_DATA_DIR', '~/.wan_gateway'))
+    VIDEO_DIR = os.path.join(DATA_DIR, 'videos')
+    HISTORY_FILE = os.path.join(DATA_DIR, 'history.json')
+    HISTORY_LIMIT = int(os.getenv('WAN_HISTORY_LIMIT', '50'))
+
+    # Show legacy (2.2 / 2.5) and deprecated (2.1) models in the UI
+    SHOW_LEGACY_MODELS = os.getenv('WAN_SHOW_LEGACY', '0') in ('1', 'true', 'yes')
+    SHOW_DEPRECATED_MODELS = os.getenv('WAN_SHOW_DEPRECATED', '0') in ('1', 'true', 'yes')
+
+    # Qwen model used by the ✨ Enhance button
+    PROMPT_OPTIMIZER_MODEL = os.getenv('WAN_PROMPT_OPTIMIZER_MODEL', 'qwen-plus')
+
+    # Never call the API; just show the payload (handy for CI / demos)
+    DRY_RUN = os.getenv('WAN_DRY_RUN', '0') in ('1', 'true', 'yes')
     
     # Text-to-Video API Configuration
     TEXT_TO_VIDEO_ENDPOINT = os.getenv(
         'TEXT_TO_VIDEO_ENDPOINT', 
-        'https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis'
+        f'{DASHSCOPE_BASE_URL}/api/v1/services/aigc/video-generation/video-synthesis'
     )
     
     # Image/Keyframe-to-Video API Configuration
     KEYFRAME_VIDEO_ENDPOINT = os.getenv(
         'KEYFRAME_VIDEO_ENDPOINT',
-        'https://dashscope.aliyuncs.com/api/v1/services/aigc/image2video/video-synthesis'
+        f'{DASHSCOPE_BASE_URL}/api/v1/services/aigc/image2video/video-synthesis'
     )
     
     # Image-to-Video API Configuration (uses different endpoint)
     IMAGE_TO_VIDEO_ENDPOINT = os.getenv(
         'IMAGE_TO_VIDEO_ENDPOINT',
-        'https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis'
+        f'{DASHSCOPE_BASE_URL}/api/v1/services/aigc/video-generation/video-synthesis'
     )
     
     # Legacy API endpoint (for backward compatibility)
@@ -55,108 +83,33 @@ class Config:
         "Commercial"       # Advertisement style
     ]
     
-    # UI Configuration - Model Options
+    # UI Configuration - Model Options (derived from src/models.py registry,
+    # kept for backward compatibility with older callers / docs)
     MODEL_OPTIONS: dict = {
-        "wan2.2-t2v-plus": {
-            "name": "wan2.2-t2v-plus",
-            "description": "Latest model with enhanced detail and motion stability",
-            "resolutions": ["480P", "1080P"],
-            "framerate": "30fps",
-            "duration": "5 seconds",
-            "api_type": "text_to_video"
-        },
-        "wanx2.1-t2v-turbo": {
-            "name": "wanx2.1-t2v-turbo",
-            "description": "Wan 2.1 Turbo - Fast generation, supports audio",
-            "resolutions": ["480P", "720P"],
-            "framerate": "30fps",
-            "duration": "5 seconds",
-            "api_type": "text_to_video",
-            "supports_audio": True
-        },
-        "wanx2.1-t2v-plus": {
-            "name": "wanx2.1-t2v-plus",
-            "description": "Wan 2.1 Plus - High quality, supports audio",
-            "resolutions": ["720P"],
-            "framerate": "30fps",
-            "duration": "5 seconds",
-            "api_type": "text_to_video",
-            "supports_audio": True
-        },
-        "wan2.2-i2v-flash": {
-            "name": "wan2.2-i2v-flash",
-            "description": "Fastest generation speed with enhanced instruction understanding",
-            "resolutions": ["480P", "720P"],
-            "framerate": "30fps",
-            "duration": "5 seconds",
-            "api_type": "image_to_video"
-        },
-        "wan2.2-i2v-plus": {
-            "name": "wan2.2-i2v-plus",
-            "description": "Latest image-to-video generation model",
-            "resolutions": ["480P", "1080P"],
-            "framerate": "30fps",
-            "duration": "5 seconds",
-            "api_type": "image_to_video"
-        },
-        "wanx2.1-i2v-plus": {
-            "name": "wanx2.1-i2v-plus",
-            "description": "Wan 2.1 Plus - Complex motion, supports audio",
-            "resolutions": ["720P"],
-            "framerate": "30fps",
-            "duration": "5 seconds",
-            "api_type": "image_to_video",
-            "supports_audio": True
-        },
-        "wanx2.1-i2v-turbo": {
-            "name": "wanx2.1-i2v-turbo",
-            "description": "Wan 2.1 Turbo - Fast generation, supports audio",
-            "resolutions": ["480P", "720P"],
-            "framerate": "30fps",
-            "duration": "3-5 seconds",
-            "api_type": "image_to_video",
-            "supports_audio": True
-        },
-        "wanx2.1-kf2v-plus": {
-            "name": "wanx2.1-kf2v-plus",
-            "description": "Wan 2.1 Keyframe - Keyframe-to-video generation",
-            "resolutions": ["720P"],
-            "framerate": "30fps",
-            "duration": "5 seconds",
-            "api_type": "keyframe_to_video",
-            "supports_audio": False
-        },
-        # Wan 2.5 Series - Latest Release with Audio Support
-        "wan2.5-t2v-preview": {
-            "name": "wan2.5-t2v-preview",
-            "description": "Wan 2.5 Preview - Audio generation, 5-10s videos, 1080P",
-            "resolutions": ["480P", "720P", "1080P"],
-            "framerate": "24fps",
-            "duration": "5-10 seconds",
-            "api_type": "text_to_video",
-            "supports_audio": True,
-            "max_prompt_length": 2000,
-            "resolution_format": "label"  # Uses "480P" instead of "832*480"
-        },
-        "wan2.5-i2v-preview": {
-            "name": "wan2.5-i2v-preview",
-            "description": "Wan 2.5 Preview - Image-to-video with audio, 5-10s, 1080P",
-            "resolutions": ["480P", "720P", "1080P"],
-            "framerate": "24fps",
-            "duration": "5-10 seconds",
-            "api_type": "image_to_video",
-            "supports_audio": True,
-            "max_prompt_length": 2000,
-            "resolution_format": "label"  # Uses "480P" instead of "832*480"
+        spec.id: {
+            "name": spec.id,
+            "description": spec.description,
+            "resolutions": list(spec.resolutions),
+            "framerate": f"{spec.fps}fps",
+            "duration": spec.duration_label,
+            "api_type": {
+                _models.T2V: "text_to_video",
+                _models.I2V: "image_to_video",
+                _models.KF2V: "keyframe_to_video",
+                _models.R2V: "reference_to_video",
+            }[spec.tasks[0]] if spec.id != "wan3.0-video" else "text_to_video",
+            "tasks": list(spec.tasks),
+            "supports_audio": spec.audio,
+            "max_prompt_length": spec.max_prompt,
+            "resolution_format": "label" if spec.dialect in ("label", "media", "kf2v") else "size",
+            "status": spec.status,
+            "family": spec.family,
         }
+        for spec in _models.REGISTRY.values()
     }
     
     # UI Configuration - Aspect Ratio Options
-    ASPECT_RATIO_OPTIONS: List[str] = [
-        "16:9",    # Widescreen format
-        "1:1",     # Square format
-        "9:16"     # Portrait/mobile format
-    ]
+    ASPECT_RATIO_OPTIONS: List[str] = list(_models.ALL_RATIOS) + ["adaptive"]
     
     # API Settings
     MAX_RETRIES = 3
@@ -176,17 +129,18 @@ class Config:
     }
     
     # UI Settings
-    MAX_PROMPT_LENGTH = 2000  # Increased for Wan 2.5 models
+    MAX_PROMPT_LENGTH = 2000
     DEFAULT_STYLE = "<auto>"
     DEFAULT_ASPECT_RATIO = "16:9"
-    DEFAULT_MODEL = "wan2.5-t2v-preview"  # Updated to latest Wan 2.5
-    DEFAULT_IMAGE_TO_VIDEO_MODEL = "wan2.5-i2v-preview"  # Updated to latest Wan 2.5
-    DEFAULT_KEYFRAME_TO_VIDEO_MODEL = "wanx2.1-kf2v-plus"  # Default keyframe model
+    DEFAULT_MODEL = os.getenv('WAN_DEFAULT_T2V_MODEL', _models.default_model_for_task(_models.T2V))
+    DEFAULT_IMAGE_TO_VIDEO_MODEL = os.getenv('WAN_DEFAULT_I2V_MODEL', _models.default_model_for_task(_models.I2V))
+    DEFAULT_KEYFRAME_TO_VIDEO_MODEL = os.getenv('WAN_DEFAULT_KF2V_MODEL', _models.default_model_for_task(_models.KF2V))
+    DEFAULT_REFERENCE_TO_VIDEO_MODEL = os.getenv('WAN_DEFAULT_R2V_MODEL', _models.default_model_for_task(_models.R2V))
     
-    # Wan 2.5 specific settings
-    DEFAULT_DURATION = 5  # Default video duration in seconds
-    DURATION_OPTIONS = [5, 10]  # Available duration options for Wan 2.5
-    DEFAULT_AUDIO_ENABLED = True  # Enable audio by default for Wan 2.5 models
+    # Duration / audio defaults (per-model limits live in src/models.py)
+    DEFAULT_DURATION = 5
+    DURATION_OPTIONS = [5, 10]  # kept for Wan 2.5 callers
+    DEFAULT_AUDIO_ENABLED = True
     
     # Video File Management
     VIDEO_CACHE_MAX_AGE_HOURS = 24  # Clean up videos older than 24 hours
@@ -236,8 +190,11 @@ class Config:
         """Get display name for aspect ratio option."""
         ratio_names = {
             "16:9": "16:9 (Widescreen)",
+            "9:16": "9:16 (Portrait)",
             "1:1": "1:1 (Square)",
-            "9:16": "9:16 (Portrait)"
+            "4:3": "4:3 (Classic)",
+            "3:4": "3:4 (Tall)",
+            "adaptive": "Adaptive (follow input)",
         }
         return ratio_names.get(ratio, ratio)
     
@@ -299,22 +256,35 @@ class Config:
         return "text_to_video"
     
     @classmethod
+    def _models_for(cls, task: str) -> List[str]:
+        include_hidden = cls.SHOW_LEGACY_MODELS or cls.SHOW_DEPRECATED_MODELS
+        ids = _models.model_ids_for_task(task, include_hidden=True)
+        if include_hidden:
+            if not cls.SHOW_DEPRECATED_MODELS:
+                ids = [m for m in ids if _models.get_spec(m).status != "deprecated"]
+            return ids
+        # Always expose everything programmatically; the UI filters by status itself.
+        return ids
+
+    @classmethod
     def get_text_to_video_models(cls) -> List[str]:
-        """Get list of models that support text-to-video generation."""
-        return [model_id for model_id, info in cls.MODEL_OPTIONS.items() 
-                if info.get("api_type") == "text_to_video"]
+        """Models that support text-to-video generation."""
+        return cls._models_for(_models.T2V)
     
     @classmethod
     def get_image_to_video_models(cls) -> List[str]:
-        """Get list of models that support image-to-video generation."""
-        return [model_id for model_id, info in cls.MODEL_OPTIONS.items() 
-                if info.get("api_type") == "image_to_video"]
+        """Models that support image-to-video (first frame) generation."""
+        return cls._models_for(_models.I2V)
     
     @classmethod
     def get_keyframe_to_video_models(cls) -> List[str]:
-        """Get list of models that support keyframe-to-video generation."""
-        return [model_id for model_id, info in cls.MODEL_OPTIONS.items() 
-                if info.get("api_type") == "keyframe_to_video"]
+        """Models that support first+last frame generation."""
+        return cls._models_for(_models.KF2V)
+
+    @classmethod
+    def get_reference_to_video_models(cls) -> List[str]:
+        """Models that support reference-to-video generation."""
+        return cls._models_for(_models.R2V)
     
     @classmethod
     def validate_image_upload(cls, file_size_mb: float, format: str, width: int, height: int) -> Optional[str]:

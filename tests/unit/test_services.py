@@ -60,6 +60,24 @@ class TestTextToVideoService:
         assert request["parameters"]["duration"] == 10
         assert request["parameters"]["audio"] is True
 
+    def test_build_request_wan30(self, service):
+        """Default model goes through the media dialect."""
+        request = service._build_request(
+            prompt="Test prompt", style="<auto>", aspect_ratio="9:16",
+            model="wan3.0-video", duration=20, audio_enabled=True
+        )
+        assert request["parameters"]["ratio"] == "9:16"
+        assert request["parameters"]["duration"] == 20
+        assert request["parameters"]["resolution"] == "1080P"
+
+    def test_build_request_wan22_size(self, service):
+        request = service._build_request(
+            prompt="Test prompt", style="<auto>", aspect_ratio="16:9",
+            model="wan2.2-t2v-plus", duration=5, audio_enabled=True
+        )
+        assert request["parameters"]["size"] == "1920*1080"
+        assert "audio" not in request["parameters"]
+
     @patch('requests.post')
     def test_submit_task_success(self, mock_post, service):
         """Test successful task submission."""

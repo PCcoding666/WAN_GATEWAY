@@ -17,7 +17,7 @@ from src.config import Config
 
 def demo_service_factory():
     """Demonstrate the VideoServiceFactory capabilities."""
-    print("🎬 Enhanced Multi-Modal Video Generator Demo")
+    print("🎬 Wan Gateway Demo (Wan 3.0 / 2.7 / 2.6)")
     print("=" * 50)
     
     print("\n📋 Supported Generation Modes:")
@@ -34,9 +34,11 @@ def demo_service_factory():
     print("\n🔧 Service Factory Validation:")
     # Test validation
     valid_combinations = [
-        ("text_to_video", "wan2.5-t2v-preview"),
-        ("image_to_video", "wan2.5-i2v-preview"),
-        ("keyframe_to_video", "wanx2.1-kf2v-plus")
+        ("text_to_video", "wan3.0-video"),
+        ("text_to_video", "wan2.7-t2v"),
+        ("image_to_video", "wan2.6-i2v-flash"),
+        ("keyframe_to_video", "wan2.7-i2v"),
+        ("keyframe_to_video", "wan2.2-kf2v-flash"),
     ]
     
     for mode, model in valid_combinations:
@@ -45,8 +47,8 @@ def demo_service_factory():
         print(f"  {mode} + {model}: {status}")
     
     # Test invalid combination
-    error = VideoServiceFactory.validate_mode_and_model("text_to_video", "wanx2.1-kf2v-plus")
-    print(f"  text_to_video + wanx2.1-kf2v-plus: {'❌ ' + error if error else '✅ Valid'}")
+    error = VideoServiceFactory.validate_mode_and_model("text_to_video", "wan2.2-kf2v-flash")
+    print(f"  text_to_video + wan2.2-kf2v-flash: {'❌ ' + error if error else '✅ Valid'}")
 
 def demo_multi_modal_app():
     """Demonstrate the MultiModalVideoApp capabilities."""
@@ -73,7 +75,7 @@ def demo_configuration():
     """Demonstrate configuration capabilities."""
     print("\n⚙️ Configuration Demo:")
     
-    print(f"  Max Prompt Length: {Config.MAX_PROMPT_LENGTH} (Wan 2.5 supports up to 2000 characters)")
+    print(f"  Max Prompt Length: {Config.MAX_PROMPT_LENGTH}")
     print(f"  Default Style: {Config.DEFAULT_STYLE}")
     print(f"  Default Aspect Ratio: {Config.DEFAULT_ASPECT_RATIO}")
     print(f"  Default Model (Text): {Config.DEFAULT_MODEL}")
@@ -83,7 +85,7 @@ def demo_configuration():
     print(f"  Max Poll Time (Text): {Config.MAX_POLL_TIME}s")
     print(f"  Max Poll Time (Keyframe): {Config.KEYFRAME_MAX_POLL_TIME}s")
     
-    print("\n🎵 Wan 2.5 Audio Features:")
+    print("\n🎵 Audio / duration defaults:")
     print(f"  Default Duration: {Config.DEFAULT_DURATION}s")
     print(f"  Duration Options: {', '.join(map(str, Config.DURATION_OPTIONS))}s")
     print(f"  Audio Enabled by Default: {Config.DEFAULT_AUDIO_ENABLED}")
@@ -121,12 +123,11 @@ def main():
         
         print("\n" + "=" * 50)
         print("✅ Demo completed successfully!")
-        print("\n🎉 New in Wan 2.5:")
-        print("  • Audio generation support (auto or custom audio URL)")
-        print("  • Extended video duration (5s or 10s)")
-        print("  • Higher resolution support (1080P)")
-        print("  • Longer prompt support (up to 2000 characters)")
-        print("  • Improved 24fps frame rate for smoother videos")
+        print("\n🎉 New in this release:")
+        print("  • wan3.0-video: all-in-one, 2-30 s, smart duration, adaptive ratio")
+        print("  • wan2.7-t2v / i2v / r2v and wan2.6 family with multi-shot + audio")
+        print("  • Reference-to-video task, request preview, dry-run, task history")
+        print("  • CLI: python cli.py models | generate | status | history")
         print("\nNext steps:")
         print("  1. Set your DASHSCOPE_API_KEY in a .env file")
         print("  2. Run 'python main.py' to start the web interface")

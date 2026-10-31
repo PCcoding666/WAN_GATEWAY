@@ -16,6 +16,8 @@ from dataclasses import dataclass
 import requests
 from .config import Config
 from .base_video_service import BaseVideoService
+from .request_builder import GenerationRequest, build_payload
+from .models import T2V, get_spec
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -204,9 +206,9 @@ class TextToVideoService(BaseVideoService):
         if model not in Config.get_text_to_video_models():
             return f"Invalid model. Must be one of: {', '.join(Config.get_text_to_video_models())}"
         
-        # Validate duration for Wan 2.5 models
-        if Config.supports_audio(model) and duration not in Config.DURATION_OPTIONS:
-            return f"Invalid duration. Must be one of: {', '.join(map(str, Config.DURATION_OPTIONS))} seconds"
+        spec = get_spec(model)
+        if duration != -1 and not (spec.duration_min <= int(duration) <= spec.duration_max):
+            return f"Invalid duration. {model} accepts {spec.duration_label}"
         
         return None
     
@@ -220,47 +222,29 @@ class TextToVideoService(BaseVideoService):
         seed: Optional[int] = None,
         duration: int = Config.DEFAULT_DURATION,
         audio_enabled: bool = Config.DEFAULT_AUDIO_ENABLED,
-        audio_url: Optional[str] = None
+        audio_url: Optional[str] = None,
+        resolution: Optional[str] = None,
+        shot_type: Optional[str] = None,
     ) -> dict:
         """
-        Build API request payload.
-        
-        Returns:
-            dict: Formatted request payload
+        Build API request payload via the shared request builder (see
+        ``src/request_builder.py``), which knows every model's API dialect.
         """
-        request_data = {
-            "model": model,
-            "input": {
-                "prompt": prompt
-            },
-            "parameters": {}
-        }
-        
-        # Handle resolution format based on model
-        if Config.uses_resolution_label(model):
-            # Wan 2.5 uses resolution labels like "480P", "720P", "1080P"
-            request_data["parameters"]["resolution"] = self._get_resolution_label(aspect_ratio, model)
-        else:
-            # Older models use size like "1920*1080"
-            request_data["parameters"]["size"] = self._get_resolution_from_aspect_ratio(aspect_ratio, model)
-        
-        # Add Wan 2.5 specific parameters
-        if Config.supports_audio(model):
-            request_data["parameters"]["duration"] = duration
-            request_data["parameters"]["audio"] = audio_enabled
-            
-            # Add custom audio URL if provided
-            if audio_url and audio_url.strip():
-                request_data["parameters"]["audio_url"] = audio_url.strip()
-        
-        # Add optional parameters
-        if negative_prompt and negative_prompt.strip():
-            request_data["parameters"]["negative_prompt"] = negative_prompt.strip()
-        
-        if seed is not None:
-            request_data["parameters"]["seed"] = seed
-        
-        return request_data
+        spec = get_spec(model)
+        req = GenerationRequest(
+            model=model,
+            task=T2V,
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            resolution=resolution,
+            ratio=aspect_ratio if aspect_ratio in spec.ratios else None,
+            duration=duration,
+            audio=audio_enabled,
+            audio_url=audio_url,
+            shot_type=shot_type,
+            seed=seed,
+        )
+        return build_payload(req)
     
     def _submit_task(self, request_data: dict) -> dict:
         """
@@ -332,64 +316,3 @@ class TextToVideoService(BaseVideoService):
                 'success': False,
                 'error': error_msg
             }
-    
-    def _get_resolution_from_aspect_ratio(self, aspect_ratio: str, model: str) -> str:
-        """
-        Convert aspect ratio to resolution format required by the API based on model capabilities.
-        
-        Args:
-            aspect_ratio: Aspect ratio string (e.g., "16:9", "1:1", "9:16")
-            model: Model name to determine supported resolutions
-            
-        Returns:
-            str: Resolution string (e.g., "1920*1080")
-        """
-        # Get supported resolutions for the model
-        supported_resolutions = Config.get_supported_resolutions_for_model(model)
-        
-        # Define resolution mappings for different quality levels
-        if "1080P" in supported_resolutions:
-            # Use 1080P resolutions for models that support it
-            resolution_map = {
-                "16:9": "1920*1080",  # 1080P widescreen
-                "1:1": "1440*1440",   # 1080P square
-                "9:16": "1080*1920"   # 1080P portrait
-            }
-        elif "720P" in supported_resolutions:
-            # Use 720P resolutions for models that support it
-            resolution_map = {
-                "16:9": "1280*720",   # 720P widescreen
-                "1:1": "960*960",     # 720P square
-                "9:16": "720*1280"    # 720P portrait
-            }
-        else:
-            # Default to 480P resolutions
-            resolution_map = {
-                "16:9": "832*480",    # 480P widescreen
-                "1:1": "624*624",     # 480P square
-                "9:16": "480*832"     # 480P portrait
-            }
-        
-        return resolution_map.get(aspect_ratio, resolution_map["16:9"])  # Default to 16:9
-    
-    def _get_resolution_label(self, aspect_ratio: str, model: str) -> str:
-        """
-        Get resolution label for Wan 2.5 models (e.g., "480P", "720P", "1080P").
-        
-        Args:
-            aspect_ratio: Aspect ratio string (e.g., "16:9", "1:1", "9:16")
-            model: Model name to determine supported resolutions
-            
-        Returns:
-            str: Resolution label (e.g., "1080P")
-        """
-        # Get supported resolutions for the model
-        supported_resolutions = Config.get_supported_resolutions_for_model(model)
-        
-        # For Wan 2.5, prefer highest available resolution
-        if "1080P" in supported_resolutions:
-            return "1080P"
-        elif "720P" in supported_resolutions:
-            return "720P"
-        else:
-            return "480P"

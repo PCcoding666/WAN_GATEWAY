@@ -25,8 +25,15 @@ class TestConfig:
 
     def test_supports_audio(self):
         """Test audio support check."""
+        assert Config.supports_audio("wan3.0-video") is True
         assert Config.supports_audio("wan2.5-t2v-preview") is True
         assert Config.supports_audio("wan2.2-t2v-plus") is False
+
+    def test_defaults_are_latest(self):
+        assert Config.DEFAULT_MODEL == "wan3.0-video"
+        assert Config.DEFAULT_IMAGE_TO_VIDEO_MODEL == "wan3.0-video"
+        assert "wan2.7-i2v" in Config.get_keyframe_to_video_models()
+        assert "wan2.7-r2v" in Config.get_reference_to_video_models()
 
     def test_validate_image_upload(self):
         """Test image upload validation."""

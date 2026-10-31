@@ -15,6 +15,8 @@ from .config import Config
 from .base_video_service import BaseVideoService
 from .text_to_video_service import VideoResult
 from .oss_service import oss_service
+from .request_builder import GenerationRequest, build_payload
+from .models import KF2V, get_spec
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +34,12 @@ class KeyFrameVideoService(BaseVideoService):
         """
         super().__init__(api_key)
         self.base_url = Config.KEYFRAME_VIDEO_ENDPOINT
+
+    def _endpoint_for(self, model: str) -> str:
+        """kf2v-legacy models live on image2video; Wan 2.7/3.0 on video-generation."""
+        if get_spec(model).dialect == "kf2v":
+            return Config.KEYFRAME_VIDEO_ENDPOINT
+        return Config.TEXT_TO_VIDEO_ENDPOINT
     
     def get_api_endpoint(self) -> str:
         """Get the API endpoint for keyframe-to-video generation."""
@@ -51,7 +59,10 @@ class KeyFrameVideoService(BaseVideoService):
         end_frame_file,
         prompt: str = "",
         style: str = Config.DEFAULT_STYLE,
-        model: str = "wanx2.1-kf2v-plus"
+        model: str = Config.DEFAULT_KEYFRAME_TO_VIDEO_MODEL,
+        duration: int = Config.DEFAULT_DURATION,
+        audio_enabled: bool = Config.DEFAULT_AUDIO_ENABLED,
+        resolution: Optional[str] = None,
     ) -> VideoResult:
         """
         Generate video from start and end frame images.
@@ -92,7 +103,10 @@ class KeyFrameVideoService(BaseVideoService):
                 first_frame_url=start_public_url,
                 last_frame_url=end_public_url,
                 prompt=prompt.strip() if prompt else None,
-                model=model
+                model=model,
+                duration=duration,
+                audio_enabled=audio_enabled,
+                resolution=resolution,
             )
             
             logger.info(f"Initiating keyframe-to-video generation...")
@@ -174,8 +188,9 @@ class KeyFrameVideoService(BaseVideoService):
         if model not in Config.get_keyframe_to_video_models():
             return f"Invalid model for keyframe-to-video. Must be one of: {', '.join(Config.get_keyframe_to_video_models())}"
         
-        if prompt and len(prompt.strip()) > Config.MAX_PROMPT_LENGTH:
-            return f"Prompt too long. Maximum {Config.MAX_PROMPT_LENGTH} characters allowed"
+        max_length = Config.get_max_prompt_length(model)
+        if prompt and len(prompt.strip()) > max_length:
+            return f"Prompt too long. Maximum {max_length} characters allowed for model {model}"
         
         return None
     
@@ -239,41 +254,33 @@ class KeyFrameVideoService(BaseVideoService):
         first_frame_url: str,
         last_frame_url: str,
         prompt: Optional[str] = None,
-        model: str = "wanx2.1-kf2v-plus"
+        model: str = Config.DEFAULT_KEYFRAME_TO_VIDEO_MODEL,
+        duration: int = Config.DEFAULT_DURATION,
+        audio_enabled: bool = Config.DEFAULT_AUDIO_ENABLED,
+        resolution: Optional[str] = None,
+        # legacy keyword aliases
+        start_frame_url: Optional[str] = None,
+        end_frame_url: Optional[str] = None,
     ) -> dict:
+        """Build the payload through the shared request builder.
+
+        Works for ``wan3.0-video`` / ``wan2.7-i2v`` (``input.media``) as well as
+        ``wan2.2-kf2v-flash`` / ``wanx2.1-kf2v-plus`` (``first_frame_url``).
         """
-        Build API request payload for keyframe-to-video generation using public URLs.
-        
-        Args:
-            first_frame_url: Public URL of the first frame image
-            last_frame_url: Public URL of the last frame image
-            prompt: Optional text prompt
-            model: Model to use for generation
-            
-        Returns:
-            dict: Formatted request payload
-        """
-        request_data = {
-            "model": model,
-            "input": {
-                "first_frame_url": first_frame_url,
-                "last_frame_url": last_frame_url
-            },
-            "parameters": {
-                "resolution": "720P",  # Fixed for keyframe models
-                "prompt_extend": True  # Enable prompt extension for better results
-            }
-        }
-        
-        # Add optional prompt
-        if prompt and prompt.strip():
-            request_data["input"]["prompt"] = prompt.strip()
-        
-        logger.info(f"Using model: {model}, resolution: 720P")
-        logger.info(f"First frame URL: {first_frame_url[:80]}...")
-        logger.info(f"Last frame URL: {last_frame_url[:80]}...")
-        
-        return request_data
+        req = GenerationRequest(
+            model=model,
+            task=KF2V,
+            prompt=prompt or "",
+            resolution=resolution,
+            duration=duration,
+            audio=audio_enabled,
+            prompt_extend=True,
+            first_frame_url=start_frame_url or first_frame_url,
+            last_frame_url=end_frame_url or last_frame_url,
+        )
+        payload = build_payload(req)
+        logger.info(f"Using model: {model}, parameters: {payload['parameters']}")
+        return payload
     
     def _submit_task(self, request_data: dict) -> dict:
         """
@@ -289,6 +296,7 @@ class KeyFrameVideoService(BaseVideoService):
         }
         
         try:
+            self.base_url = self._endpoint_for(request_data.get("model", Config.DEFAULT_KEYFRAME_TO_VIDEO_MODEL))
             logger.info(f"Submitting keyframe-to-video task to: {self.base_url}")
             # Log the full request payload since it's now clean (no large base64 data)
             logger.info(f"Request payload: {json.dumps(request_data, indent=2)}")

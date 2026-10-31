@@ -14,9 +14,16 @@ Every tab follows the same rule: the selected model re-fits every control to wha
 actually supports, the exact request JSON is one click away, and nothing is sent in
 dry-run mode.
 
+[![CI](https://github.com/PCcoding666/WAN_GATEWAY/actions/workflows/ci.yml/badge.svg)](https://github.com/PCcoding666/WAN_GATEWAY/actions/workflows/ci.yml)
+[![Deploy](https://github.com/PCcoding666/WAN_GATEWAY/actions/workflows/deploy.yml/badge.svg)](https://github.com/PCcoding666/WAN_GATEWAY/actions/workflows/deploy.yml)
 [![Python Version](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://python.org)
 [![Gradio](https://img.shields.io/badge/gradio-5.43%2B%20%7C%206.x-orange.svg)](https://gradio.app)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+## 🚀 Deploy
+
+Push to `main` → **CI** (tests, dry-run smoke, Docker build) → **Deploy to production** (Artifact Registry → Cloud Run → smoke test).
+Set the `GCP_PROJECT_ID`, `GCP_SA_KEY` and `DASHSCOPE_API_KEY` repository secrets once; until then the deploy job is skipped with a notice. Details: [doc/DEPLOYMENT.md](doc/DEPLOYMENT.md#-automated-deployment-github-actions).
 
 ## ✨ What's new in 2.1 — image, speech and video editing
 

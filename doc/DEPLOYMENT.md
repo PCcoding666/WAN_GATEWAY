@@ -360,33 +360,50 @@ docker build --no-cache -t wan-gateway .
 docker inspect wan-gateway
 ```
 
-## 🚀 Automated Deployment
+## 🚀 Automated Deployment (GitHub Actions)
 
-### CI/CD Pipeline Example (GitHub Actions)
+Two workflows ship with the repository:
 
-**.github/workflows/deploy.yml**:
-```yaml
-name: Deploy to Production
+| Workflow | File | Trigger | What it does |
+|---|---|---|---|
+| **CI** | `.github/workflows/ci.yml` | every push / PR | installs deps, byte-compiles, runs `pytest`, dry-run smoke of UI + CLI + demo, builds the Docker image and boots it |
+| **Deploy to production** | `.github/workflows/deploy.yml` | after CI succeeds on `main`, or manually (*Run workflow*) | builds the image, pushes it to Artifact Registry, deploys to **Cloud Run**, smoke-tests the URL |
 
-on:
-  push:
-    branches: [ main ]
+### One-time setup
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v2
-    
-    - name: Build Docker image
-      run: docker build -t wan-gateway:latest .
-    
-    - name: Deploy to server
-      run: |
-        # Add your deployment logic here
-        # e.g., push to container registry, then deploy to server
-        echo "Deploying to production..."
+1. Create a Google Cloud project and a service account with roles **Cloud Run Admin**,
+   **Artifact Registry Writer** and **Service Account User**; download its JSON key.
+2. In GitHub → *Settings → Secrets and variables → Actions* add:
+
+   | Secret | Required | Value |
+   |---|---|---|
+   | `GCP_PROJECT_ID` | ✅ | your project id |
+   | `GCP_SA_KEY` | ✅ | the service-account JSON key |
+   | `DASHSCOPE_API_KEY` | ✅ | Model Studio API key |
+   | `DASHSCOPE_REGION` | – | `cn` (default) or `intl` |
+   | `OSS_ACCESS_KEY_ID`, `OSS_ACCESS_KEY_SECRET`, `OSS_ENDPOINT`, `OSS_BUCKET_NAME` | – | needed for image / keyframe / reference uploads |
+   | `WAN_UI_AUTH` | – | `user:password[,user2:password2]` — Gradio login gate for the UI |
+
+   Optional *Variables*: `GCP_REGION` (default `us-central1`), `CLOUD_RUN_SERVICE` (default `wan-gateway`),
+   `CLOUD_RUN_PUBLIC` (`true` to allow unauthenticated callers; default is IAM-protected).
+3. Push to `main` (or run *Deploy to production* manually). Until the three required secrets
+   exist the deploy job is **skipped with a notice**, so CI stays green.
+
+**Access control.** By default the service is IAM-protected: only identities granted
+`roles/run.invoker` can reach it (the workflow's smoke test uses the service account's identity
+token). To open it to anyone, set the repository variable `CLOUD_RUN_PUBLIC=true` **and** set
+`WAN_UI_AUTH` so the UI asks for a login — the UI spends your DashScope quota on every click.
+
+The run summary shows the Cloud Run URL. Rollback: re-run the workflow with `image_tag`
+set to an earlier commit sha (every image is tagged with its sha and `latest`).
+
+### Local equivalent
+
+```bash
+docker build -t wan-gateway .
+docker run -p 7860:7860 -e DASHSCOPE_API_KEY=sk-... wan-gateway
+# or
+docker compose up -d
 ```
 
 ## 📝 Maintenance Checklist

@@ -780,7 +780,9 @@ class WanStudio:
         ui = self.create_interface()
         logger.info("Launching Wan Gateway Studio on %s:%s", server_name, server_port)
         common = dict(server_name=server_name, server_port=server_port, debug=debug,
-                      show_error=True, quiet=True, **self._launch_kwargs())
+                      show_error=True, quiet=True, auth=Config.UI_AUTH, **self._launch_kwargs())
+        if Config.UI_AUTH:
+            logger.info("UI login enabled for %d user(s)", len(Config.UI_AUTH))
         try:
             ui.launch(share=share, **common)
         except Exception as exc:

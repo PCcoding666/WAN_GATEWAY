@@ -47,6 +47,12 @@ class Config:
     SHOW_LEGACY_MODELS = os.getenv('WAN_SHOW_LEGACY', '0') in ('1', 'true', 'yes')
     SHOW_DEPRECATED_MODELS = os.getenv('WAN_SHOW_DEPRECATED', '0') in ('1', 'true', 'yes')
 
+    # Optional login gate for the web UI: WAN_UI_AUTH="user:password[,user2:password2]"
+    UI_AUTH = [
+        tuple(pair.split(':', 1)) for pair in os.getenv('WAN_UI_AUTH', '').split(',')
+        if ':' in pair and pair.split(':', 1)[0].strip()
+    ] or None
+
     # Qwen model used by the ✨ Enhance button
     PROMPT_OPTIMIZER_MODEL = os.getenv('WAN_PROMPT_OPTIMIZER_MODEL', 'qwen-plus')
 

@@ -13,6 +13,17 @@
 - 用户账户系统
 - 视频历史记录管理
 
+## [2.2.0] - 2026-10-31
+
+### 新增
+- GitHub Actions **CI**（`ci.yml`）：pytest、编译检查、UI/CLI/demo dry-run 冒烟、Docker 构建与启动探活。
+- GitHub Actions **Deploy to production**（`deploy.yml`）：推送 Artifact Registry → 部署 Cloud Run → 探活；缺少 `GCP_PROJECT_ID` / `GCP_SA_KEY` / `DASHSCOPE_API_KEY` 时跳过并提示；可手动指定 `image_tag` 回滚。
+- `.dockerignore`；`docker-compose.yml` 传递地域 / OSS / dry-run 变量并挂载 `./data`。
+
+### 变更
+- Dockerfile：Python 3.13，临时安装工具链编译 `oss2` 依赖的 `crcmod`，非 root 用户，`HEALTHCHECK`，支持 `$PORT`。
+- `main.py` 读取环境变量 `HOST` / `PORT`。
+
 ## [2.1.0] - 2026-10-31
 
 ### 新增

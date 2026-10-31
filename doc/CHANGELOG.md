@@ -15,6 +15,13 @@ and adhering to [Semantic Versioning 2.0.0](https://semver.org/).
 - User account system
 - Video history management
 
+## [2.2.1] - 2026-10-31
+
+### Changed
+- **Deploy pipeline no longer targets Google Cloud.** `deploy.yml` now publishes the image to GitHub Container Registry (`ghcr.io/<owner>/<repo>:<sha>`, `:latest`) with the built-in token, then optionally SSHes into your own server (`PROD_SSH_HOST` / `PROD_SSH_USER` / `PROD_SSH_KEY`) to pull and restart the container; skipped with a notice when those secrets are absent.
+- `production/deploy-production.sh` (Cloud Run / Compute Engine) removed; replaced by provider-agnostic `production/deploy.sh` that pulls the GHCR image on any Docker host.
+- All Google Cloud references removed from the deployment docs.
+
 ## [2.2.0] - 2026-10-31
 
 ### Added

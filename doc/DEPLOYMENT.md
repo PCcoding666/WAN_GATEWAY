@@ -148,42 +148,28 @@ docker run -d \
 
 ## ☁️ Cloud Deployment
 
-### 1. Google Cloud Platform
+CI publishes every `main` build to GitHub Container Registry as
+`ghcr.io/pccoding666/wan_gateway:<sha>` and `:latest`, so any Docker host can run it.
+
+### 1. Any VM (Alibaba Cloud ECS, a VPS, your own box)
 
 ```bash
-# Use provided deployment script
-chmod +x deploy-to-cloud.sh
-./deploy-to-cloud.sh
+# 1. Install Docker (Alibaba Cloud Linux / CentOS shown; use apt on Debian/Ubuntu)
+sudo yum install -y docker && sudo systemctl enable --now docker
 
-# Or manually deploy with Cloud Run
-gcloud run deploy wan-gateway \
-  --image gcr.io/your-project/wan-gateway \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars DASHSCOPE_API_KEY=your_api_key
+# 2. Fetch the deploy helper and your settings
+curl -fsSLO https://raw.githubusercontent.com/PCcoding666/WAN_GATEWAY/main/production/deploy.sh
+curl -fsSL  https://raw.githubusercontent.com/PCcoding666/WAN_GATEWAY/main/.env.example -o .env
+vi .env            # set DASHSCOPE_API_KEY (and WAN_UI_AUTH, OSS_* if needed)
+
+# 3. Pull the image and (re)start the container; re-run to update, pass a sha to roll back
+chmod +x deploy.sh && ./deploy.sh            # latest
+./deploy.sh 4ec95d0e...                      # a specific build
 ```
 
-### 2. Alibaba Cloud ECS
+The same steps are what the **Deploy to production** workflow runs over SSH (see below).
 
-```bash
-# On ECS instance
-# 1. Install Docker
-sudo yum install -y docker
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# 2. Pull and run image
-sudo docker pull your-registry/wan-gateway:latest
-sudo docker run -d \
-  --name wan-gateway \
-  -p 80:7860 \
-  --restart always \
-  -e DASHSCOPE_API_KEY=your_api_key \
-  your-registry/wan-gateway:latest
-```
-
-### 3. AWS ECS
+### 2. AWS ECS
 
 Deploy using AWS ECS task definition:
 
@@ -367,35 +353,42 @@ Two workflows ship with the repository:
 | Workflow | File | Trigger | What it does |
 |---|---|---|---|
 | **CI** | `.github/workflows/ci.yml` | every push / PR | installs deps, byte-compiles, runs `pytest`, dry-run smoke of UI + CLI + demo, builds the Docker image and boots it |
-| **Deploy to production** | `.github/workflows/deploy.yml` | after CI succeeds on `main`, or manually (*Run workflow*) | builds the image, pushes it to Artifact Registry, deploys to **Cloud Run**, smoke-tests the URL |
+| **Deploy to production** | `.github/workflows/deploy.yml` | after CI succeeds on `main`, or manually (*Run workflow*) | **stage 1** publishes the image to GHCR (`ghcr.io/pccoding666/wan_gateway:<sha>`, `:latest`); **stage 2** SSHes into your server, pulls that image, restarts the `wan-gateway` container and smoke-tests the URL |
 
-### One-time setup
+Stage 1 needs nothing (it uses the built-in `GITHUB_TOKEN`). Stage 2 runs only when the SSH
+secrets below exist; otherwise it is **skipped with a notice** and the image is still published.
 
-1. Create a Google Cloud project and a service account with roles **Cloud Run Admin**,
-   **Artifact Registry Writer** and **Service Account User**; download its JSON key.
+### One-time setup for the server stage
+
+1. A Linux host with Docker installed and an SSH user that can run `docker` (member of the
+   `docker` group). Open the port you want to serve on (default `7860`), or put a reverse proxy
+   with TLS in front of it.
 2. In GitHub → *Settings → Secrets and variables → Actions* add:
 
    | Secret | Required | Value |
    |---|---|---|
-   | `GCP_PROJECT_ID` | ✅ | your project id |
-   | `GCP_SA_KEY` | ✅ | the service-account JSON key |
+   | `PROD_SSH_HOST` | ✅ | server hostname or IP |
+   | `PROD_SSH_USER` | ✅ | SSH user |
+   | `PROD_SSH_KEY` | ✅ | that user's private key (PEM) |
    | `DASHSCOPE_API_KEY` | ✅ | Model Studio API key |
+   | `PROD_SSH_PORT` | – | default `22` |
+   | `PROD_PORT` | – | host port to publish, default `7860` |
+   | `PROD_URL` | – | public URL for the smoke test, default `http://HOST:PORT` |
+   | `WAN_UI_AUTH` | recommended | `user:password[,user2:password2]` — Gradio login gate |
    | `DASHSCOPE_REGION` | – | `cn` (default) or `intl` |
    | `OSS_ACCESS_KEY_ID`, `OSS_ACCESS_KEY_SECRET`, `OSS_ENDPOINT`, `OSS_BUCKET_NAME` | – | needed for image / keyframe / reference uploads |
-   | `WAN_UI_AUTH` | – | `user:password[,user2:password2]` — Gradio login gate for the UI |
 
-   Optional *Variables*: `GCP_REGION` (default `us-central1`), `CLOUD_RUN_SERVICE` (default `wan-gateway`),
-   `CLOUD_RUN_PUBLIC` (`true` to allow unauthenticated callers; default is IAM-protected).
-3. Push to `main` (or run *Deploy to production* manually). Until the three required secrets
-   exist the deploy job is **skipped with a notice**, so CI stays green.
+3. Push to `main` or run *Deploy to production* manually. The run summary shows the image
+   tags and the URL.
 
-**Access control.** By default the service is IAM-protected: only identities granted
-`roles/run.invoker` can reach it (the workflow's smoke test uses the service account's identity
-token). To open it to anyone, set the repository variable `CLOUD_RUN_PUBLIC=true` **and** set
-`WAN_UI_AUTH` so the UI asks for a login — the UI spends your DashScope quota on every click.
+**Access control.** The container is reachable by anyone who can reach the port, and every click
+spends your DashScope quota, so set `WAN_UI_AUTH` (the UI then asks for a login) and prefer a
+reverse proxy with TLS. **Rollback:** run the workflow manually with `image_tag` set to an earlier
+commit sha, or `./production/deploy.sh <sha>` on the server.
 
-The run summary shows the Cloud Run URL. Rollback: re-run the workflow with `image_tag`
-set to an earlier commit sha (every image is tagged with its sha and `latest`).
+**Private packages.** GHCR packages are private by default; the server stage logs in with the
+workflow token, and `production/deploy.sh` run by hand needs `docker login ghcr.io` with a personal
+access token that has `read:packages` — or make the package public in its GitHub settings.
 
 ### Local equivalent
 

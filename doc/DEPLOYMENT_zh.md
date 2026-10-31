@@ -146,42 +146,28 @@ docker run -d \
 
 ## ☁️ 云端部署
 
-### 1. Google Cloud Platform
+CI 会把 `main` 的每次构建发布到 GitHub Container Registry：
+`ghcr.io/pccoding666/wan_gateway:<sha>` 和 `:latest`，任何 Docker 主机都能直接跑。
+
+### 1. 任意云主机（阿里云 ECS、VPS、自建机器）
 
 ```bash
-# 使用提供的部署脚本
-chmod +x deploy-to-cloud.sh
-./deploy-to-cloud.sh
+# 1. 安装 Docker（以 Alibaba Cloud Linux / CentOS 为例，Debian/Ubuntu 用 apt）
+sudo yum install -y docker && sudo systemctl enable --now docker
 
-# 或者使用 Cloud Run 手动部署
-gcloud run deploy wan-gateway \
-  --image gcr.io/your-project/wan-gateway \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars DASHSCOPE_API_KEY=your_api_key
+# 2. 下载部署脚本和配置模板
+curl -fsSLO https://raw.githubusercontent.com/PCcoding666/WAN_GATEWAY/main/production/deploy.sh
+curl -fsSL  https://raw.githubusercontent.com/PCcoding666/WAN_GATEWAY/main/.env.example -o .env
+vi .env            # 填 DASHSCOPE_API_KEY（按需填 WAN_UI_AUTH、OSS_*）
+
+# 3. 拉取镜像并（重）启容器；更新时再跑一次，回滚传旧的 sha
+chmod +x deploy.sh && ./deploy.sh            # latest
+./deploy.sh 4ec95d0e...                      # 指定构建
 ```
 
-### 2. 阿里云 ECS
+**Deploy to production** 工作流通过 SSH 执行的就是同样的步骤（见下文）。
 
-```bash
-# 在 ECS 实例上
-# 1. 安装 Docker
-sudo yum install -y docker
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# 2. 拉取和运行镜像
-sudo docker pull your-registry/wan-gateway:latest
-sudo docker run -d \
-  --name wan-gateway \
-  -p 80:7860 \
-  --restart always \
-  -e DASHSCOPE_API_KEY=your_api_key \
-  your-registry/wan-gateway:latest
-```
-
-### 3. AWS ECS
+### 2. AWS ECS
 
 使用 AWS ECS 任务定义部署:
 
@@ -365,30 +351,34 @@ docker inspect wan-gateway
 | 工作流 | 文件 | 触发 | 做什么 |
 |---|---|---|---|
 | **CI** | `.github/workflows/ci.yml` | 每次 push / PR | 安装依赖、编译检查、`pytest`、UI + CLI + demo 的 dry-run 冒烟、构建并启动 Docker 镜像 |
-| **Deploy to production** | `.github/workflows/deploy.yml` | `main` 上 CI 成功后，或手动 *Run workflow* | 构建镜像 → 推到 Artifact Registry → 部署 **Cloud Run** → 探活 |
+| **Deploy to production** | `.github/workflows/deploy.yml` | `main` 上 CI 成功后，或手动 *Run workflow* | **阶段 1** 把镜像发布到 GHCR（`ghcr.io/pccoding666/wan_gateway:<sha>`、`:latest`）；**阶段 2** SSH 到你的服务器，拉取镜像、重启 `wan-gateway` 容器、探活 |
 
-### 一次性配置
+阶段 1 不需要任何配置（用内置 `GITHUB_TOKEN`）。阶段 2 只在下面的 SSH secret 存在时运行，否则**跳过并提示**，镜像照常发布。
 
-1. 建一个 Google Cloud 项目和服务账号（角色：**Cloud Run Admin**、**Artifact Registry Writer**、**Service Account User**），下载 JSON 密钥。
+### 服务器阶段的一次性配置
+
+1. 一台装好 Docker 的 Linux 主机，SSH 用户能执行 `docker`（在 `docker` 组里）。放通要对外的端口（默认 `7860`），或者前面放一个带 TLS 的反向代理。
 2. 在 GitHub *Settings → Secrets and variables → Actions* 添加：
 
    | Secret | 必填 | 值 |
    |---|---|---|
-   | `GCP_PROJECT_ID` | ✅ | 项目 id |
-   | `GCP_SA_KEY` | ✅ | 服务账号 JSON 密钥 |
+   | `PROD_SSH_HOST` | ✅ | 服务器域名或 IP |
+   | `PROD_SSH_USER` | ✅ | SSH 用户 |
+   | `PROD_SSH_KEY` | ✅ | 该用户的私钥（PEM） |
    | `DASHSCOPE_API_KEY` | ✅ | 百炼 API key |
+   | `PROD_SSH_PORT` | – | 默认 `22` |
+   | `PROD_PORT` | – | 对外端口，默认 `7860` |
+   | `PROD_URL` | – | 探活用的公网 URL，默认 `http://HOST:PORT` |
+   | `WAN_UI_AUTH` | 建议 | `user:password[,user2:password2]`，给 UI 加登录框 |
    | `DASHSCOPE_REGION` | – | `cn`（默认）或 `intl` |
    | `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`、`OSS_ENDPOINT`、`OSS_BUCKET_NAME` | – | 图生 / 首尾帧 / 参考任务上传图片需要 |
-   | `WAN_UI_AUTH` | – | `user:password[,user2:password2]`，给 UI 加登录框 |
 
-   可选 *Variables*：`GCP_REGION`（默认 `us-central1`）、`CLOUD_RUN_SERVICE`（默认 `wan-gateway`）、
-   `CLOUD_RUN_PUBLIC`（`true` 允许匿名访问；默认受 IAM 保护）。
-3. 推送到 `main`（或手动运行 *Deploy to production*）。三个必填 secret 不齐时，部署 job 会**跳过并在摘要里提示**，CI 仍为绿色。
+3. 推送到 `main` 或手动运行 *Deploy to production*。运行摘要里会给出镜像标签和 URL。
 
-**访问控制。** 默认服务受 IAM 保护，只有被授予 `roles/run.invoker` 的身份能访问（工作流的探活用服务账号的 identity token）。
-要对外公开，把仓库变量 `CLOUD_RUN_PUBLIC` 设为 `true`，**同时**设置 `WAN_UI_AUTH` 让 UI 要求登录 —— 这个界面每点一次都在花你的百炼额度。
+**访问控制。** 能访问端口的人都能用这个界面，而每点一次都在花你的百炼额度，所以请设置 `WAN_UI_AUTH`（UI 会要求登录），并尽量放在带 TLS 的反向代理后面。
+**回滚：** 手动运行工作流并把 `image_tag` 设为旧的 commit sha，或在服务器上执行 `./production/deploy.sh <sha>`。
 
-运行摘要里会给出 Cloud Run URL。回滚：手动运行工作流，把 `image_tag` 设为旧的 commit sha（每个镜像都带 sha 和 `latest` 标签）。
+**私有镜像。** GHCR 的包默认私有；服务器阶段用工作流 token 登录，手动运行 `production/deploy.sh` 则需要先 `docker login ghcr.io`（个人访问令牌需 `read:packages`），或者把包设为公开。
 
 ### 本地等价操作
 

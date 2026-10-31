@@ -13,6 +13,13 @@
 - 用户账户系统
 - 视频历史记录管理
 
+## [2.2.1] - 2026-10-31
+
+### 变更
+- **部署流水线不再依赖 Google Cloud。** `deploy.yml` 改为用内置 token 把镜像发布到 GitHub Container Registry（`ghcr.io/<owner>/<repo>:<sha>`、`:latest`），再按需 SSH 到你自己的服务器（`PROD_SSH_HOST` / `PROD_SSH_USER` / `PROD_SSH_KEY`）拉取并重启容器；缺少这些 secret 时跳过并提示。
+- 删除 `production/deploy-production.sh`（Cloud Run / Compute Engine），改为与云厂商无关的 `production/deploy.sh`，可在任何 Docker 主机上拉取 GHCR 镜像运行。
+- 部署文档中的 Google Cloud 内容全部移除。
+
 ## [2.2.0] - 2026-10-31
 
 ### 新增

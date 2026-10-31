@@ -1,26 +1,27 @@
-name: Deploy to production (Cloud Run)
+name: Deploy to production
 
-# Runs on every push to main (after the CI workflow succeeds) and on demand.
+# Runs after the CI workflow succeeds on main, and on demand.
 #
-# Required repository secrets
-#   GCP_PROJECT_ID       Google Cloud project id
-#   GCP_SA_KEY           JSON key of a service account with roles:
-#                        run.admin, artifactregistry.writer, iam.serviceAccountUser
-#   DASHSCOPE_API_KEY    Alibaba Cloud Model Studio key
-# Optional secrets
-#   DASHSCOPE_REGION     cn (default) | intl
-#   OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_ENDPOINT, OSS_BUCKET_NAME
-#   WAN_UI_AUTH          "user:password[,user2:password2]" — Gradio login gate
-# Optional repository variables
-#   GCP_REGION           default us-central1
-#   CLOUD_RUN_SERVICE    default wan-gateway
-#   CLOUD_RUN_PUBLIC     "true" to expose the service to unauthenticated callers.
-#                        Default is IAM-protected (only identities with
-#                        roles/run.invoker can reach it). When you do make it
-#                        public, set WAN_UI_AUTH so the UI itself asks for a login.
+# Stage 1 — always: build the Docker image and publish it to GitHub Container
+#   Registry as ghcr.io/<owner>/<repo>:<sha> and :latest. Needs nothing but the
+#   built-in GITHUB_TOKEN.
 #
-# When GCP_PROJECT_ID / GCP_SA_KEY are missing the deploy job is skipped
-# (green, with a notice in the run summary) instead of failing.
+# Stage 2 — optional: SSH into your production host and (re)start the container
+#   from that image. Runs only when these repository secrets exist:
+#     PROD_SSH_HOST        hostname or IP of the server
+#     PROD_SSH_USER        SSH user (must be able to run docker)
+#     PROD_SSH_KEY         private key for that user
+#     DASHSCOPE_API_KEY    Alibaba Cloud Model Studio key
+#   Optional secrets:
+#     PROD_SSH_PORT        default 22
+#     PROD_PORT            host port to publish (default 7860)
+#     PROD_URL             public URL for the smoke test (default http://HOST:PORT)
+#     WAN_UI_AUTH          "user:password[,user2:password2]" — Gradio login gate
+#     DASHSCOPE_REGION     cn (default) | intl
+#     OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_ENDPOINT, OSS_BUCKET_NAME
+#   Without the SSH secrets the deploy stage is skipped with a notice in the run
+#   summary; the image is still published, so `production/deploy.sh` can pull it
+#   by hand on any Docker host.
 
 on:
   workflow_run:
@@ -30,7 +31,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Image tag to deploy (default: commit sha)"
+        description: "Image tag to deploy (default: commit sha of this ref)"
         required: false
 
 concurrency:
@@ -39,151 +40,168 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write
+  packages: write
 
 env:
-  GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
-  SERVICE: ${{ vars.CLOUD_RUN_SERVICE || 'wan-gateway' }}
+  IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
-  preflight:
-    name: Check deploy configuration
+  image:
+    name: Build and publish image (GHCR)
     runs-on: ubuntu-latest
-    # workflow_run fires for failed CI too; only continue on success (or manual)
+    timeout-minutes: 25
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - id: meta
+        run: |
+          TAG="${{ github.event.inputs.image_tag }}"
+          [ -z "$TAG" ] && TAG="${{ github.event.workflow_run.head_sha || github.sha }}"
+          IMAGE_LC=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "image=$IMAGE_LC:$TAG" >> "$GITHUB_OUTPUT"
+          echo "latest=$IMAGE_LC:latest" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}
+            ${{ steps.meta.outputs.latest }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          {
+            echo "## 📦 Image published"
+            echo
+            echo "- \`${{ steps.meta.outputs.image }}\`"
+            echo "- \`${{ steps.meta.outputs.latest }}\`"
+            echo
+            echo "Pull on any Docker host: \`docker pull ${{ steps.meta.outputs.image }}\` or run \`production/deploy.sh\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  preflight:
+    name: Check production host configuration
+    needs: image
+    runs-on: ubuntu-latest
     outputs:
       configured: ${{ steps.check.outputs.configured }}
     steps:
       - id: check
         env:
-          PROJECT: ${{ secrets.GCP_PROJECT_ID }}
-          SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          HOST: ${{ secrets.PROD_SSH_HOST }}
+          USER: ${{ secrets.PROD_SSH_USER }}
+          KEY: ${{ secrets.PROD_SSH_KEY }}
           API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
         run: |
           missing=""
-          [ -z "$PROJECT" ] && missing="$missing GCP_PROJECT_ID"
-          [ -z "$SA_KEY" ]  && missing="$missing GCP_SA_KEY"
+          [ -z "$HOST" ]    && missing="$missing PROD_SSH_HOST"
+          [ -z "$USER" ]    && missing="$missing PROD_SSH_USER"
+          [ -z "$KEY" ]     && missing="$missing PROD_SSH_KEY"
           [ -z "$API_KEY" ] && missing="$missing DASHSCOPE_API_KEY"
           if [ -n "$missing" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
             {
-              echo "## ⏭️ Deploy skipped"
+              echo "## ⏭️ Server deploy skipped"
               echo
               echo "Missing repository secrets:**$missing**"
               echo
-              echo "Add them under *Settings → Secrets and variables → Actions*, then re-run this workflow"
-              echo "or push to \`main\` again. See \`doc/DEPLOYMENT.md\` → *CI/CD*."
+              echo "Add them under *Settings → Secrets and variables → Actions* and re-run, or pull the"
+              echo "published image on your server with \`production/deploy.sh\`. See \`doc/DEPLOYMENT.md\`."
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
   deploy:
-    name: Build · push · deploy
-    needs: preflight
+    name: Deploy to production host (SSH)
+    needs: [image, preflight]
     if: needs.preflight.outputs.configured == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     environment:
       name: production
-      url: ${{ steps.deploy.outputs.url }}
+      url: ${{ steps.url.outputs.url }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-
-      - id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Enable APIs and ensure Artifact Registry repo
-        run: |
-          gcloud services enable run.googleapis.com artifactregistry.googleapis.com --quiet
-          gcloud artifacts repositories describe "$SERVICE" --location "$GCP_REGION" >/dev/null 2>&1 || \
-          gcloud artifacts repositories create "$SERVICE" --repository-format docker \
-            --location "$GCP_REGION" --description "Wan Gateway images" --quiet
-          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
-
-      - name: Compute image name
-        id: img
+      - id: url
         env:
-          PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+          HOST: ${{ secrets.PROD_SSH_HOST }}
+          PORT: ${{ secrets.PROD_PORT }}
+          PROD_URL: ${{ secrets.PROD_URL }}
         run: |
-          TAG="${{ github.event.inputs.image_tag }}"
-          [ -z "$TAG" ] && TAG="${{ github.event.workflow_run.head_sha || github.sha }}"
-          BASE="$GCP_REGION-docker.pkg.dev/$PROJECT/$SERVICE/$SERVICE"
-          echo "image=$BASE:$TAG" >> "$GITHUB_OUTPUT"
-          echo "latest=$BASE:latest" >> "$GITHUB_OUTPUT"
+          URL="${PROD_URL:-http://$HOST:${PORT:-7860}}"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6
+      - name: Pull image and restart container on the host
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE_REF: ${{ needs.image.outputs.image }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOST_PORT: ${{ secrets.PROD_PORT || '7860' }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          DASHSCOPE_REGION: ${{ secrets.DASHSCOPE_REGION || 'cn' }}
+          WAN_UI_AUTH: ${{ secrets.WAN_UI_AUTH }}
+          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+          OSS_ENDPOINT: ${{ secrets.OSS_ENDPOINT || 'https://oss-cn-hangzhou.aliyuncs.com' }}
+          OSS_BUCKET_NAME: ${{ secrets.OSS_BUCKET_NAME }}
         with:
-          context: .
-          push: true
-          tags: |
-            ${{ steps.img.outputs.image }}
-            ${{ steps.img.outputs.latest }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Deploy to Cloud Run
-        id: deploy
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.SERVICE }}
-          region: ${{ env.GCP_REGION }}
-          image: ${{ steps.img.outputs.image }}
-          flags: >-
-            ${{ vars.CLOUD_RUN_PUBLIC == 'true' && '--allow-unauthenticated' || '--no-allow-unauthenticated' }}
-            --port=7860
-            --memory=1Gi
-            --cpu=1
-            --min-instances=0
-            --max-instances=10
-            --timeout=300
-          env_vars: |
-            WAN_UI_AUTH=${{ secrets.WAN_UI_AUTH }}
-            DASHSCOPE_API_KEY=${{ secrets.DASHSCOPE_API_KEY }}
-            DASHSCOPE_REGION=${{ secrets.DASHSCOPE_REGION || 'cn' }}
-            OSS_ACCESS_KEY_ID=${{ secrets.OSS_ACCESS_KEY_ID }}
-            OSS_ACCESS_KEY_SECRET=${{ secrets.OSS_ACCESS_KEY_SECRET }}
-            OSS_ENDPOINT=${{ secrets.OSS_ENDPOINT || 'https://oss-cn-hangzhou.aliyuncs.com' }}
-            OSS_BUCKET_NAME=${{ secrets.OSS_BUCKET_NAME }}
-            WAN_DATA_DIR=/tmp/wan_gateway
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          envs: IMAGE_REF,GHCR_USER,GHCR_TOKEN,HOST_PORT,DASHSCOPE_API_KEY,DASHSCOPE_REGION,WAN_UI_AUTH,OSS_ACCESS_KEY_ID,OSS_ACCESS_KEY_SECRET,OSS_ENDPOINT,OSS_BUCKET_NAME
+          script: |
+            set -e
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            docker pull "$IMAGE_REF"
+            docker rm -f wan-gateway 2>/dev/null || true
+            mkdir -p "$HOME/wan-gateway/data"
+            docker run -d --name wan-gateway --restart unless-stopped \
+              -p "$HOST_PORT:7860" \
+              -v "$HOME/wan-gateway/data:/app/data" \
+              -e DASHSCOPE_API_KEY="$DASHSCOPE_API_KEY" \
+              -e DASHSCOPE_REGION="$DASHSCOPE_REGION" \
+              -e WAN_UI_AUTH="$WAN_UI_AUTH" \
+              -e OSS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" \
+              -e OSS_ACCESS_KEY_SECRET="$OSS_ACCESS_KEY_SECRET" \
+              -e OSS_ENDPOINT="$OSS_ENDPOINT" \
+              -e OSS_BUCKET_NAME="$OSS_BUCKET_NAME" \
+              "$IMAGE_REF"
+            docker image prune -f >/dev/null 2>&1 || true
+            docker ps --filter name=wan-gateway --format '{{.Names}} {{.Status}} {{.Image}}'
 
       - name: Smoke test
-        env:
-          PUBLIC: ${{ vars.CLOUD_RUN_PUBLIC }}
         run: |
-          URL="${{ steps.deploy.outputs.url }}"
-          # IAM-protected services answer 403 to anonymous callers; use an identity token.
-          AUTH=""
-          if [ "$PUBLIC" != "true" ]; then
-            AUTH="Authorization: Bearer $(gcloud auth print-identity-token)"
-          fi
-          for i in $(seq 1 20); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" ${AUTH:+-H "$AUTH"} "$URL/" || true)
+          URL="${{ steps.url.outputs.url }}"
+          for i in $(seq 1 24); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$URL/" || true)
             if [ "$code" = "200" ]; then echo "✅ $URL answered 200"; break; fi
             sleep 5
           done
-          [ "$code" = "200" ] || { echo "❌ $URL returned $code"; exit 1; }
+          [ "$code" = "200" ] || { echo "❌ $URL returned ${code:-no response}"; exit 1; }
           {
             echo "## 🚀 Deployed"
             echo
-            echo "- Service: \`$SERVICE\` (\`$GCP_REGION\`)"
-            echo "- Image: \`${{ steps.img.outputs.image }}\`"
+            echo "- Image: \`${{ needs.image.outputs.image }}\`"
             echo "- URL: $URL"
-            if [ "$PUBLIC" = "true" ]; then
-              echo "- Access: public (CLOUD_RUN_PUBLIC=true)"
-            else
-              echo "- Access: IAM-protected. Grant roles/run.invoker to users, or set the"
-              echo "  repository variable CLOUD_RUN_PUBLIC=true (and the WAN_UI_AUTH secret) and re-run."
-            fi
           } >> "$GITHUB_STEP_SUMMARY"
